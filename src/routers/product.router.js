@@ -34,11 +34,14 @@ const storage = multer.diskStorage({
 const upload = multer({storage})
 
 productRouter.get("/", getProducts);
+productRouter.get("/popular", getPopularProducts);
+
 productRouter.get("/lifestyle/:type", getProductsByLifestyle);
 productRouter.get("/tag/:tag", getProductsByTag);
 productRouter.get("/:id", getProductById);
 productRouter.post("/", upload.array("images", 5), createProduct);
 productRouter.put("/:id", updateProduct);
 productRouter.delete("/:id", deleteProduct);
+
 
 export default productRouter;

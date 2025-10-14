@@ -41,9 +41,9 @@ userSchema.methods.generateAccessToken = async function() {
         },
         JWT_ACCESS_TOKEN_SECRET,
         {
-            expiresIn: "1d"
+            expiresIn: "1d" 
         }
-    )
+    );
 }
 
 userSchema.methods.generateRefreshToken = async function() {
@@ -54,9 +54,10 @@ userSchema.methods.generateRefreshToken = async function() {
         },
         JWT_REFRESH_TOKEN_SECRET,
         {
-            expiresIn: "7d"
+            expiresIn: "7d" 
         }
-    )
+    );
 }
+
 const User = mongoose.model("user", userSchema);
 export default User;

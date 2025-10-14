@@ -86,7 +86,7 @@ export const createProduct = async (req, res) => {
     });
 
     const savedProduct = await newProduct.save();
-
+  
     res.status(201).json({
       message: "✅ Product uploaded successfully",
       product: savedProduct,
@@ -145,12 +145,14 @@ export const getProductsByTag = async (req, res) => {
 export const getPopularProducts = async (req, res) => {
   try {
     const products = await Product.find()
-      .sort({ clicks: -1 })   // sort by clicks descending
-      .limit(10)              // top 10
-      .populate("category", "name");
+      .sort({ clicks: -1 })
+      .limit(8)
+      .populate({ path: "category", select: "name", strictPopulate: false })
+      .lean();
 
     res.status(200).json(products);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Popular Products Error:", err);
+    res.status(500).json({ error: "Server failed. Check DB and category references." });
   }
 };
