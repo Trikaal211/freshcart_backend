@@ -7,6 +7,4 @@ cartrouter.post("/add",authMiddleware, addToCart);
 cartrouter.get("/", authMiddleware, getCart);
 cartrouter.delete("/:cartItemId",authMiddleware, removeFromCart);
 cartrouter.put("/:cartItemId", authMiddleware, updateCartItem); // ✅ PUT route for quantity update
-
-
 export default cartrouter;

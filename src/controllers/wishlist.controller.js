@@ -102,15 +102,17 @@ export const getWishlist = async (req, res) => {
       });
     }
 
-    res.status(200).json({
-      wishlist
-    });
+    // ✅ Filter out null productIds (product deleted or invalid)
+    wishlist.products = wishlist.products.filter(p => p.productId !== null);
+
+    res.status(200).json({ wishlist });
 
   } catch (error) {
     console.error("Error fetching wishlist:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 // Clear entire wishlist
 export const clearWishlist = async (req, res) => {

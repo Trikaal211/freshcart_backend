@@ -1,6 +1,6 @@
 import Product from "../../schema/productList.model.js";
 
-// ✅ Get all products
+//  Get all products
 export const getProducts = async (req, res) => {
   try {
     let query = Product.find().populate("category", "name");
@@ -18,7 +18,7 @@ export const getProducts = async (req, res) => {
 };
 
 
-// ✅ Get products by lifestyle
+// Get products by lifestyle
 export const getProductsByLifestyle = async (req, res) => {
   try {
     const { type } = req.params;
@@ -34,7 +34,7 @@ export const getProductsByLifestyle = async (req, res) => {
   }
 };
 
-// ✅ Get product by ID (also increment clicks counter)
+//  Get product by ID (also increment clicks counter)
 export const getProductById = async (req, res) => {
   try {
     const product = await Product.findByIdAndUpdate(
@@ -51,28 +51,57 @@ export const getProductById = async (req, res) => {
   }
 };
 
-// ✅ Create new product
+//Create new product
 
 export const createProduct = async (req, res) => {
   try {
     let imageUrls = [];
 
-  if (req.files && req.files.length > 0) {
-  imageUrls = req.files.map(
-    file => `http://localhost:3000/uploads/${file.filename}`
-  );
-}
+    // Agar files upload hui ho
+    if (req.files && req.files.length > 0) {
+      imageUrls = req.files.map(
+        (file) => `http://localhost:3000/uploads/${file.filename}`
+      );
+    } 
+    // Agar body me images array ho aur files na ho
+    else if (req.body.images) {
+      try {
+        imageUrls = typeof req.body.images === "string" ? JSON.parse(req.body.images) : req.body.images;
+      } catch {
+        imageUrls = [req.body.images];
+      }
+    }
 
+    // Function to parse JSON and handle $oid
     const parseIfJson = (data) => {
       try {
-        return typeof data === "string" ? JSON.parse(data) : data;
+        const parsed = typeof data === "string" ? JSON.parse(data) : data;
+
+        // Agar ObjectId format ho { $oid: "..." }
+        if (parsed && typeof parsed === "object" && parsed.$oid) return parsed.$oid;
+
+        // Agar array ho to recursively parse
+        if (Array.isArray(parsed)) return parsed.map(item => parseIfJson(item));
+
+        // Agar object ho to recursively parse each key
+        if (parsed && typeof parsed === "object") {
+          const newObj = {};
+          for (const key in parsed) {
+            newObj[key] = parseIfJson(parsed[key]);
+          }
+          return newObj;
+        }
+
+        return parsed;
       } catch {
         return data;
       }
     };
 
+    // Parse all nested JSON fields
     const parsedBody = {
       ...req.body,
+      category: parseIfJson(req.body.category),
       nutritionalInfo: parseIfJson(req.body.nutritionalInfo),
       shipping: parseIfJson(req.body.shipping),
       lifestyle: parseIfJson(req.body.lifestyle),
@@ -80,26 +109,29 @@ export const createProduct = async (req, res) => {
       tags: parseIfJson(req.body.tags),
     };
 
+    // Create new product
     const newProduct = new Product({
       ...parsedBody,
-      images: imageUrls,
+      images: imageUrls, 
     });
 
     const savedProduct = await newProduct.save();
-  
+
     res.status(201).json({
-      message: "✅ Product uploaded successfully",
+      message: " Product uploaded successfully",
       product: savedProduct,
     });
   } catch (error) {
-    console.error("❌ Error creating product:", error);
-    res.status(500).json({ message: "Error creating product", error });
+    console.error("❌ Error creating products:", error);
+    res.status(500).json({ message: "Error creating products", error });
   }
 };
 
 
 
-// ✅ Update product
+
+
+//  Update product
 export const updateProduct = async (req, res) => {
   try {
     const updatedProduct = await Product.findByIdAndUpdate(
@@ -114,7 +146,7 @@ export const updateProduct = async (req, res) => {
   }
 };
 
-// ✅ Delete product
+//  Delete product
 export const deleteProduct = async (req, res) => {
   try {
     const deletedProduct = await Product.findByIdAndDelete(req.params.id);
@@ -125,7 +157,7 @@ export const deleteProduct = async (req, res) => {
   }
 };
 
-// ✅ Get products by tag
+//  Get products by tag
 export const getProductsByTag = async (req, res) => {
   try {
     const { tag } = req.params;

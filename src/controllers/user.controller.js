@@ -92,6 +92,15 @@ export const signin = async (req, res) => {
         console.log(error);
     }
 };
+export const getUserProfile = async (req, res) => {
+  try {
+const userId = req.user._id || req.user.id;
+const user = await User.findById(userId).select("-password");    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 
 export const signout = async (req, res) => {
     try {
