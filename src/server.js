@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import "../config/db.js"
 import dotenv from "dotenv";
+import { PORT } from "../constants/env.constants.js";
 import reciperouter from "./routers/recipe.router.js";
 import {fileURLToPath} from "url";
 import path from "path";
@@ -29,6 +30,6 @@ app.use("/cart", cartrouter);
 app.use("/wishlist", wishlistRouter); // Add this line
 app.use("/", router);
 
-app.listen(3000, () => {
+app.listen(PORT||3000, () => {
   console.log("hey, server running on port 3000");
 });
