@@ -15,7 +15,7 @@ import {
   getMyProducts,
   addProductOrder
 } from "../controllers/product.controller.js";
-import { authenticate } from "../middleware/auth.js"; // Add auth middleware
+import { authMiddleware } from "../../middlewares/user.middleware.js";
 
 const productRouter = express.Router();
 const __filename = fileURLToPath(import.meta.url);
@@ -39,10 +39,10 @@ productRouter.get("/", getProducts);
 productRouter.get("/popular", getPopularProducts);
 productRouter.get("/lifestyle/:type", getProductsByLifestyle);
 productRouter.get("/tag/:tag", getProductsByTag);
-productRouter.get("/my-products", authenticate, getMyProducts); // Add this route
+productRouter.get("/my-products", authMiddleware, getMyProducts); // Add this route
 productRouter.get("/:id", getProductById);
-productRouter.post("/", authenticate, upload.array("images", 5), createProduct);
-productRouter.post("/:productId/order", authenticate, addProductOrder); // Add order route
+productRouter.post("/", authMiddleware, upload.array("images", 5), createProduct);
+productRouter.post("/:productId/order", authMiddleware, addProductOrder); // Add order route
 productRouter.put("/:id", updateProduct);
 productRouter.delete("/:id", deleteProduct);
 
