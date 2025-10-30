@@ -107,26 +107,31 @@ export const getAllOrders = async (req, res) => {
 };
 
 // Update order status
+
 export const updateOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { status } = req.body;
 
-    const order = await Order.findByIdAndUpdate(
-      orderId,
-      { status },
-      { new: true }
-    ).populate("items.product", "title");
-
-    if (!order) {
-      return res.status(404).json({ error: "Order not found" });
+    // Check if valid status
+    if (!["pending", "shipped", "delivered"].includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
     }
 
-    res.status(200).json({
-      message: "Order status updated successfully",
-      order
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const order = await Order.findById(orderId);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    // ✅ Seller can only update status of their own product
+    if (order.seller.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    order.status = status;
+    await order.save();
+
+    return res.status(200).json({ message: "Order status updated", order });
+  } catch (err) {
+    console.error("❌ Update order status error:", err);
+    return res.status(500).json({ message: err.message });
   }
 };
