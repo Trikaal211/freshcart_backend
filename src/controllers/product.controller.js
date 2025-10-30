@@ -132,12 +132,15 @@ export const createProduct = async (req, res) => {
 // Get products uploaded by current user
 export const getMyProducts = async (req, res) => {
   try {
-    const products = await Product.find({ uploadedBy: req.user._id })
-      .populate("category", "name")
-      .populate("orders.user", "name email"); // Populate order user details
+    console.log("User from token:", req.user); // 🧩 check this
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ error: "Unauthorized: No user found" });
+    }
 
+    const products = await Product.find({ uploadedBy: req.user._id });
     res.status(200).json(products);
   } catch (err) {
+    console.error("❌ My Products fetch error:", err);
     res.status(500).json({ error: err.message });
   }
 };
