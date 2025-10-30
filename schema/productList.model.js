@@ -10,8 +10,7 @@ const productSchema = new mongoose.Schema(
       maxlength: [100, "Title cannot exceed 100 characters"],
     },
 
-   slug: { type: String, required: true }
-,
+    slug: { type: String, required: true },
 
     brand: {
       type: String,
@@ -46,7 +45,8 @@ const productSchema = new mongoose.Schema(
         validator: function (value) {
           return value <= this.price;
         },
-        message: "Discount price ({VALUE}) cannot be greater than the original price",
+        message:
+          "Discount price ({VALUE}) cannot be greater than the original price",
       },
     },
 
@@ -68,10 +68,12 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
-    images: [{
-      type: String,
-      trim: true,
-    }],
+    images: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
 
     category: {
       type: mongoose.Schema.Types.ObjectId,
@@ -79,11 +81,10 @@ const productSchema = new mongoose.Schema(
       required: true,
     },
 
-  lifestyle: {
-  type: [String]
-},
-  
-    // Delivery related information
+    lifestyle: {
+      type: [String],
+    },
+
     deliveryInfo: {
       type: String,
       trim: true,
@@ -96,63 +97,61 @@ const productSchema = new mongoose.Schema(
       default: "In Stock",
     },
 
-    // Product features/benefits
-    features: [{
-      type: String,
-      trim: true,
-    }],
+    features: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
 
-    // Ingredients list
     ingredients: {
       type: String,
       trim: true,
       maxlength: [1000, "Ingredients cannot exceed 1000 characters"],
     },
 
-    // Nutritional information
     nutritionalInfo: {
       calories: { type: String, trim: true },
       protein: { type: String, trim: true },
       carbs: { type: String, trim: true },
       fat: { type: String, trim: true },
-      // Add other nutritional fields as needed
     },
 
-    // Related products
-    relatedProducts: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Product",
-    }],
+    relatedProducts: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Product",
+      },
+    ],
 
-    // Product tags for better searchability
-    tags: [{
-      type: String,
-      trim: true,
-    }],
+    tags: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
 
-    // Stock status
     inStock: {
       type: Boolean,
       default: true,
     },
 
-    // Shipping information
     shipping: {
       freeShipping: { type: Boolean, default: false },
-      shippingTime: { type: String, trim: true }, // e.g., "2-3 days"
+      shippingTime: { type: String, trim: true },
     },
 
-    // Ratings and reviews
     ratings: {
       average: { type: Number, default: 0, min: 0, max: 5 },
       count: { type: Number, default: 0 },
     },
-clicks: {
-  type: Number,
-  default: 0,
-  min: [0, "Clicks cannot be negative"],
-},
-    // SEO fields
+
+    clicks: {
+      type: Number,
+      default: 0,
+      min: [0, "Clicks cannot be negative"],
+    },
+
     metaTitle: {
       type: String,
       trim: true,
@@ -164,13 +163,38 @@ clicks: {
       trim: true,
       maxlength: [160, "Meta description cannot exceed 160 characters"],
     },
+
+    // 🟢 NEW FIELD — store orders for each product
+    orders: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        quantity: {
+          type: Number,
+          default: 1,
+        },
+        orderDate: {
+          type: Date,
+          default: Date.now,
+        },
+        status: {
+          type: String,
+          enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],
+          default: "pending",
+        },
+        orderPrice: {
+          type: Number,
+        },
+      },
+    ],
   },
-  { 
-    timestamps: true,  
-    versionKey: false, 
+  {
+    timestamps: true,
+    versionKey: false,
   }
 );
 
 const Product = mongoose.model("Product", productSchema);
-
 export default Product;
