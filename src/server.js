@@ -27,7 +27,7 @@ const __dirname = path.dirname(__filename);
 app.use("/uploads", express.static(path.join(path.resolve(), "uploads")));
 app.use("/recipes", reciperouter);
 app.use("/books", bookrouter);
-app.use("orders", orderRouter)
+app.use("/orders", orderRouter)
 app.use("/cart", cartrouter);
 app.use("/wishlist", wishlistRouter); // Add this line
 app.use("/", router);
