@@ -60,7 +60,7 @@ export const createProduct = async (req, res) => {
     // Agar files upload hui ho
     if (req.files && req.files.length > 0) {
       imageUrls = req.files.map(
-        (file) => `http://localhost:3000/uploads/${file.filename}`
+(file) => `https://freshcart-backend-4wrc.onrender.com/uploads/${file.filename}`
       );
     } 
     // Agar body me images array ho aur files na ho
