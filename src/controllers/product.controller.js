@@ -53,6 +53,7 @@ export const getProductById = async (req, res) => {
 
 //Create new product
 
+// Create new product - Add uploadedBy field
 export const createProduct = async (req, res) => {
   try {
     let imageUrls = [];
@@ -60,7 +61,7 @@ export const createProduct = async (req, res) => {
     // Agar files upload hui ho
     if (req.files && req.files.length > 0) {
       imageUrls = req.files.map(
-(file) => `https://freshcart-backend-4wrc.onrender.com/uploads/${file.filename}`
+        file => `https://freshcart-backend-4wrc.onrender.com/uploads/${file.filename}`
       );
     } 
     // Agar body me images array ho aur files na ho
@@ -109,21 +110,68 @@ export const createProduct = async (req, res) => {
       tags: parseIfJson(req.body.tags),
     };
 
-    // Create new product
+    // Create new product with uploadedBy field
     const newProduct = new Product({
       ...parsedBody,
-      images: imageUrls, 
+      images: imageUrls,
+      uploadedBy: req.user._id // Add the user who uploaded the product
     });
 
     const savedProduct = await newProduct.save();
 
     res.status(201).json({
-      message: " Product uploaded successfully",
+      message: "Product uploaded successfully",
       product: savedProduct,
     });
   } catch (error) {
     console.error("❌ Error creating products:", error);
     res.status(500).json({ message: "Error creating products", error });
+  }
+};
+
+// Get products uploaded by current user
+export const getMyProducts = async (req, res) => {
+  try {
+    const products = await Product.find({ uploadedBy: req.user._id })
+      .populate("category", "name")
+      .populate("orders.user", "name email"); // Populate order user details
+
+    res.status(200).json(products);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Add order to product (this will be called when someone orders a product)
+export const addProductOrder = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const { quantity = 1 } = req.body;
+
+    const updatedProduct = await Product.findByIdAndUpdate(
+      productId,
+      {
+        $push: {
+          orders: {
+            user: req.user._id,
+            quantity: quantity,
+            status: "pending"
+          }
+        }
+      },
+      { new: true }
+    ).populate("orders.user", "name email");
+
+    if (!updatedProduct) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    res.status(200).json({
+      message: "Order added to product",
+      product: updatedProduct
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
