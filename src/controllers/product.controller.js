@@ -54,126 +54,101 @@ export const getProductById = async (req, res) => {
 //Create new product
 
 // Create new product - Add uploadedBy field
-export const createProduct = async (req, res) => {
-  try {
-    let imageUrls = [];
 
-    // Agar files upload hui ho
-    if (req.files && req.files.length > 0) {
-      imageUrls = req.files.map(
-        file => `https://freshcart-backend-4wrc.onrender.com/uploads/${file.filename}`
-      );
-    } 
-    // Agar body me images array ho aur files na ho
-    else if (req.body.images) {
-      try {
-        imageUrls = typeof req.body.images === "string" ? JSON.parse(req.body.images) : req.body.images;
-      } catch {
-        imageUrls = [req.body.images];
-      }
-    }
-
-    // Function to parse JSON and handle $oid
-    const parseIfJson = (data) => {
-      try {
-        const parsed = typeof data === "string" ? JSON.parse(data) : data;
-
-        // Agar ObjectId format ho { $oid: "..." }
-        if (parsed && typeof parsed === "object" && parsed.$oid) return parsed.$oid;
-
-        // Agar array ho to recursively parse
-        if (Array.isArray(parsed)) return parsed.map(item => parseIfJson(item));
-
-        // Agar object ho to recursively parse each key
-        if (parsed && typeof parsed === "object") {
-          const newObj = {};
-          for (const key in parsed) {
-            newObj[key] = parseIfJson(parsed[key]);
-          }
-          return newObj;
-        }
-
-        return parsed;
-      } catch {
-        return data;
-      }
-    };
-
-    // Parse all nested JSON fields
-    const parsedBody = {
-      ...req.body,
-      category: parseIfJson(req.body.category),
-      nutritionalInfo: parseIfJson(req.body.nutritionalInfo),
-      shipping: parseIfJson(req.body.shipping),
-      lifestyle: parseIfJson(req.body.lifestyle),
-      features: parseIfJson(req.body.features),
-      tags: parseIfJson(req.body.tags),
-    };
-
-    // Create new product with uploadedBy field
-    const newProduct = new Product({
-      ...parsedBody,
-      images: imageUrls,
-      uploadedBy: req.user._id // Add the user who uploaded the product
-    });
-
-    const savedProduct = await newProduct.save();
-
-    res.status(201).json({
-      message: "Product uploaded successfully",
-      product: savedProduct,
-    });
-  } catch (error) {
-    console.error("❌ Error creating products:", error);
-    res.status(500).json({ message: "Error creating products", error });
-  }
-};
-
-// Get products uploaded by current user
+// Get products uploaded by current user - FIXED VERSION
 export const getMyProducts = async (req, res) => {
   try {
+    console.log("🔍 Fetching products for user:", req.user._id);
+    
     const products = await Product.find({ uploadedBy: req.user._id })
       .populate("category", "name")
-      .populate("orders.user", "name email"); // Populate order user details
+      .populate({
+        path: "orders.user",
+        select: "name email", // Only get name and email of the user who ordered
+        model: "User" // Explicitly specify the model
+      })
+      .sort({ createdAt: -1 }); // Sort by latest first
+
+    console.log(`✅ Found ${products.length} products for user ${req.user._id}`);
 
     res.status(200).json(products);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("❌ Error in getMyProducts:", err);
+    res.status(500).json({ 
+      error: "Failed to fetch your products",
+      details: err.message 
+    });
   }
 };
 
-// Add order to product (this will be called when someone orders a product)
+// Add order to product - IMPROVED VERSION
 export const addProductOrder = async (req, res) => {
   try {
     const { productId } = req.params;
-    const { quantity = 1 } = req.body;
+    const { quantity = 1, orderPrice, orderId } = req.body;
+
+    console.log(`🛒 Adding order to product ${productId} by user ${req.user._id}`);
+
+    const orderData = {
+      user: req.user._id,
+      quantity: quantity,
+      orderPrice: orderPrice,
+      orderId: orderId,
+      status: "pending",
+      orderDate: new Date()
+    };
 
     const updatedProduct = await Product.findByIdAndUpdate(
       productId,
       {
-        $push: {
-          orders: {
-            user: req.user._id,
-            quantity: quantity,
-            status: "pending"
-          }
-        }
+        $push: { orders: orderData },
+        $inc: { quantity: -quantity } // Reduce stock
       },
       { new: true }
-    ).populate("orders.user", "name email");
+    )
+    .populate("category", "name")
+    .populate({
+      path: "orders.user",
+      select: "name email",
+      model: "User"
+    });
 
     if (!updatedProduct) {
       return res.status(404).json({ error: "Product not found" });
     }
 
+    console.log(`✅ Order added to product ${productId}`);
+
     res.status(200).json({
-      message: "Order added to product",
+      message: "Order added to product successfully",
       product: updatedProduct
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("❌ Error in addProductOrder:", err);
+    res.status(500).json({ 
+      error: "Failed to add order to product",
+      details: err.message 
+    });
   }
 };
+
+// Rest of your existing product controller functions remain the same...
+// export const getProducts = async (req, res) => {
+//   try {
+//     let query = Product.find().populate("category", "name");
+
+//     if (req.query.sort === "popular") {
+//       query = query.sort({ clicks: -1 });
+//     }
+
+//     const products = await query;
+//     res.status(200).json(products);
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// };
+
+// ... keep all your other existing functions
 
 
 
