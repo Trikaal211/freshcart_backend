@@ -84,7 +84,11 @@ const productSchema = new mongoose.Schema(
     lifestyle: {
       type: [String],
     },
-
+uploadedBy: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "User",
+  required: true
+},
     deliveryInfo: {
       type: String,
       trim: true,
