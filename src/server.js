@@ -13,8 +13,11 @@ import bookrouter from "./routers/book.router.js";
 import wishlistRouter from "./routers/wishlist.router.js";
 import orderRouter from "./routers/order.routes.js";
 
+
 const app = express();
 dotenv.config();
+console.log("Cloudinary Cloud Name:", process.env.CLOUDINARY_CLOUD_NAME);
+
 
 // ✅ CORS setup
 app.use(cors({

@@ -48,7 +48,7 @@ productRouter.get("/my-products", authMiddleware, getMyProducts);
 productRouter.get("/:id", getProductById);
 
 // ✅ Now uploads go to Cloudinary instead of local folder
-productRouter.post("/", upload.array("images", 5), createProduct);
+productRouter.post("/", authMiddleware, upload.array("images", 5), createProduct);
 
 productRouter.post("/:productId/order", authMiddleware, addProductOrder);
 productRouter.put("/:id", updateProduct);
