@@ -60,9 +60,8 @@ export const createProduct = async (req, res) => {
 
     // Agar files upload hui ho
     if (req.files && req.files.length > 0) {
-      imageUrls = req.files.map(
-        file => `https://freshcart-backend-4wrc.onrender.com/uploads/${file.filename}`
-      );
+imageUrls = req.files.map(file => file.path); // Cloudinary ne direct URL de diya hota hai
+
     } 
     // Agar body me images array ho aur files na ho
     else if (req.body.images) {
