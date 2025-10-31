@@ -19,19 +19,24 @@ import { authMiddleware } from "../../middlewares/user.middleware.js";
 const productRouter = express.Router();
 
 // ✅ Improved Multer storage for Cloudinary
-const storage = multer.memoryStorage();
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: async (req, file) => {
+    return {
+      folder: "freshcart_products",
+      allowed_formats: ["jpg", "png", "jpeg", "webp"],
+      transformation: [
+        { width: 800, height: 600, crop: "limit" },
+        { quality: "auto" }
+      ]
+    };
+  },
+});
+
 const upload = multer({ 
   storage: storage,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB
-  },
-  fileFilter: (req, file, cb) => {
-    // Check file types
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed!'), false);
-    }
+    fileSize: 5 * 1024 * 1024, // 5MB limit
   }
 });
 
