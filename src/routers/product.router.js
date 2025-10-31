@@ -1,8 +1,7 @@
 import express from "express";
-import path from "path";
 import multer from "multer";
-import fs from "fs";
-import { fileURLToPath } from "url";
+import { v2 as cloudinary } from "cloudinary";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
 import {
   getProducts,
   getProductById,
@@ -16,33 +15,42 @@ import {
   addProductOrder
 } from "../controllers/product.controller.js";
 import { authMiddleware } from "../../middlewares/user.middleware.js";
+import dotenv from "dotenv";
 
-const productRouter = express.Router();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+dotenv.config();
 
-const uploadDir = path.join(path.resolve(), "uploads");
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+// ✅ Cloudinary Config
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + "-" + file.originalname);
+// ✅ Multer Storage with Cloudinary
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: "freshcart-products", // folder name in Cloudinary
+    allowed_formats: ["jpg", "jpeg", "png", "webp"],
   },
 });
+
 const upload = multer({ storage });
 
-// ✅ Routes
+// ✅ Router
+const productRouter = express.Router();
+
 productRouter.get("/", getProducts);
 productRouter.get("/popular", getPopularProducts);
 productRouter.get("/lifestyle/:type", getProductsByLifestyle);
 productRouter.get("/tag/:tag", getProductsByTag);
-productRouter.get("/my-products", authMiddleware, getMyProducts); // Add this route
+productRouter.get("/my-products", authMiddleware, getMyProducts);
 productRouter.get("/:id", getProductById);
+
+// ✅ Now uploads go to Cloudinary instead of local folder
 productRouter.post("/", authMiddleware, upload.array("images", 5), createProduct);
-productRouter.post("/:productId/order", authMiddleware, addProductOrder); // Add order route
+
+productRouter.post("/:productId/order", authMiddleware, addProductOrder);
 productRouter.put("/:id", updateProduct);
 productRouter.delete("/:id", deleteProduct);
 
