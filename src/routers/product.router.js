@@ -18,16 +18,27 @@ import { authMiddleware } from "../../middlewares/user.middleware.js";
 
 const productRouter = express.Router();
 
-// ✅ Multer storage for Cloudinary
+// ✅ Improved Multer storage for Cloudinary
 const storage = new CloudinaryStorage({
-  cloudinary,
-  params: {
-    folder: "freshcart_products",
-    allowed_formats: ["jpg", "png", "jpeg", "webp"],
+  cloudinary: cloudinary,
+  params: async (req, file) => {
+    return {
+      folder: "freshcart_products",
+      allowed_formats: ["jpg", "png", "jpeg", "webp"],
+      transformation: [
+        { width: 800, height: 600, crop: "limit" },
+        { quality: "auto" }
+      ]
+    };
   },
 });
 
-const upload = multer({ storage });
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  }
+});
 
 // ✅ Routes
 productRouter.get("/", getProducts);
@@ -36,7 +47,10 @@ productRouter.get("/lifestyle/:type", getProductsByLifestyle);
 productRouter.get("/tag/:tag", getProductsByTag);
 productRouter.get("/my-products", authMiddleware, getMyProducts);
 productRouter.get("/:id", getProductById);
+
+// ✅ FIXED: Product creation route with proper middleware order
 productRouter.post("/", authMiddleware, upload.array("images", 5), createProduct);
+
 productRouter.post("/:productId/order", authMiddleware, addProductOrder);
 productRouter.put("/:id", updateProduct);
 productRouter.delete("/:id", deleteProduct);

@@ -55,48 +55,65 @@ export const getProductById = async (req, res) => {
 
 export const createProduct = async (req, res) => {
   try {
-  console.log("REQ BODY:", JSON.stringify(req.body, null, 2));
-console.log("REQ FILES:", req.files);
+    console.log("=== UPLOAD DEBUG INFO ===");
+    console.log("Request User:", req.user);
+    console.log("Request Files:", req.files);
+    console.log("Request Body:", req.body);
+
     let imageUrls = [];
-        console.log("FILES RECEIVED:", req.files); // 🔍 Debugging
 
-
-    // ✅ 1. Upload files from multer (req.files)
+    // ✅ Check if files were uploaded properly
     if (req.files && req.files.length > 0) {
-      for (const file of req.files) {
-        imageUrls.push(file.path); // multer-storage-cloudinary already uploads & gives file.path = cloud URL
-      }
+      imageUrls = req.files.map(file => file.path);
+      console.log("✅ Cloudinary URLs:", imageUrls);
+    } else {
+      console.log("⚠️ No files received in req.files");
     }
 
-    // ✅ 2. Helper for nested JSON parsing
-    const parseIfJson = (data) => {
+    // ✅ Improved JSON parsing helper
+    const parseField = (field) => {
+      if (!field) return field;
+      
       try {
-        const parsed = typeof data === "string" ? JSON.parse(data) : data;
-        if (parsed && typeof parsed === "object" && parsed.$oid) return parsed.$oid;
-        if (Array.isArray(parsed)) return parsed.map(item => parseIfJson(item));
-        if (parsed && typeof parsed === "object") {
-          const newObj = {};
-          for (const key in parsed) newObj[key] = parseIfJson(parsed[key]);
-          return newObj;
-        }
+        // If it's already an object, return as is
+        if (typeof field === 'object') return field;
+        
+        // If it's a string, try to parse it
+        const parsed = JSON.parse(field);
         return parsed;
-      } catch {
-        return data;
+      } catch (error) {
+        // If parsing fails, return the original value
+        return field;
       }
     };
 
-    // ✅ 3. Parse other fields
+    // ✅ Parse fields safely
     const parsedBody = {
-      ...req.body,
-      category: parseIfJson(req.body.category),
-      nutritionalInfo: parseIfJson(req.body.nutritionalInfo),
-      shipping: parseIfJson(req.body.shipping),
-      lifestyle: parseIfJson(req.body.lifestyle),
-      features: parseIfJson(req.body.features),
-      tags: parseIfJson(req.body.tags),
+      title: req.body.title,
+      slug: req.body.slug,
+      brand: req.body.brand,
+      subtitle: req.body.subtitle,
+      description: req.body.description,
+      price: parseFloat(req.body.price) || 0,
+      discountPrice: parseFloat(req.body.discountPrice) || 0,
+      quantity: parseInt(req.body.quantity) || 1,
+      weight: req.body.weight,
+      category: req.body.category, // This should be category ID string
+      lifestyle: parseField(req.body.lifestyle) || [],
+      deliveryInfo: req.body.deliveryInfo,
+      availability: req.body.availability || "In Stock",
+      features: parseField(req.body.features),
+      ingredients: req.body.ingredients,
+      nutritionalInfo: parseField(req.body.nutritionalInfo) || {},
+      tags: parseField(req.body.tags) || [],
+      shipping: parseField(req.body.shipping) || { freeShipping: false, shippingTime: "" },
+      metaTitle: req.body.metaTitle,
+      metaDescription: req.body.metaDescription,
     };
 
-    // ✅ 4. Create product
+    console.log("✅ Parsed Body:", parsedBody);
+
+    // ✅ Create product
     const newProduct = new Product({
       ...parsedBody,
       images: imageUrls,
@@ -104,14 +121,26 @@ console.log("REQ FILES:", req.files);
     });
 
     const savedProduct = await newProduct.save();
+    console.log("✅ Product saved successfully:", savedProduct._id);
 
     res.status(201).json({
-      message: "✅ Product uploaded successfully to Cloudinary",
+      message: "✅ Product created successfully",
       product: savedProduct,
     });
+
   } catch (error) {
     console.error("❌ Error creating product:", error);
-    res.status(500).json({ message: "Error creating product", error: error.message });
+    
+    // More detailed error logging
+    if (error.name === 'ValidationError') {
+      console.log("Validation Error Details:", error.errors);
+    }
+    
+    res.status(500).json({ 
+      message: "Error creating product", 
+      error: error.message,
+      details: error.errors || error
+    });
   }
 };
 
