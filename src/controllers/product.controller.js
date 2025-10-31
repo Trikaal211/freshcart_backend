@@ -62,13 +62,7 @@ export const createProduct = async (req, res) => {
 imageUrls = req.files.map(f => f.path || f.secure_url || f.url);
 
     // Agar body me images array ho aur files na ho
-    else if (req.body.images) {
-      try {
-        imageUrls = typeof req.body.images === "string" ? JSON.parse(req.body.images) : req.body.images;
-      } catch {
-        imageUrls = [req.body.images];
-      }
-    }
+  
 
     // Function to parse JSON and handle $oid
     const parseIfJson = (data) => {
