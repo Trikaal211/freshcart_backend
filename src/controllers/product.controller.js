@@ -55,76 +55,52 @@ export const getProductById = async (req, res) => {
 
 export const createProduct = async (req, res) => {
   try {
-    console.log("=== PRODUCT CREATION STARTED ===");
-    console.log("User:", req.user ? req.user._id : "No user");
-    console.log("Files received:", req.files ? req.files.length : 0);
-    console.log("Body keys:", Object.keys(req.body));
+    console.log("=== CREATE PRODUCT CONTROLLER ===");
+    console.log("Uploaded Image URLs:", req.uploadedImageUrls);
+    console.log("Request Body:", req.body);
 
-    // Check if user is authenticated
-    if (!req.user || !req.user._id) {
-      return res.status(401).json({ 
-        message: "Unauthorized: Please login first" 
-      });
-    }
+    // Use manually uploaded image URLs
+    const imageUrls = req.uploadedImageUrls || [];
 
-    let imageUrls = [];
-
-    // Handle file uploads
-    if (req.files && req.files.length > 0) {
-      console.log("Processing files...");
-      imageUrls = req.files.map(file => {
-        console.log("File info:", {
-          originalname: file.originalname,
-          path: file.path,
-          size: file.size
-        });
-        return file.path; // Cloudinary URL
-      });
-      console.log("Image URLs:", imageUrls);
-    } else {
-      console.log("No files uploaded, using empty images array");
-    }
-
-    // Parse request body safely
-    const parseField = (field) => {
-      if (!field || typeof field !== 'string') return field;
-      try {
-        return JSON.parse(field);
-      } catch (error) {
-        return field;
-      }
-    };
-
-    // Build product data
+    // Simple field parsing - no complex JSON parsing needed
     const productData = {
       title: req.body.title,
       slug: req.body.slug,
       brand: req.body.brand || "",
       description: req.body.description || "",
       price: parseFloat(req.body.price) || 0,
-      discountPrice: req.body.discountPrice ? parseFloat(req.body.discountPrice) : undefined,
+      discountPrice: req.body.discountPrice ? parseFloat(req.body.discountPrice) : null,
       quantity: parseInt(req.body.quantity) || 1,
       weight: req.body.weight || "",
-      category: req.body.category, // This should be a valid category ID
-      lifestyle: parseField(req.body.lifestyle) || [],
+      category: req.body.category, // Make sure this is a valid category ID
+      lifestyle: Array.isArray(req.body.lifestyle) ? req.body.lifestyle : 
+                (req.body.lifestyle ? [req.body.lifestyle] : []),
       deliveryInfo: req.body.deliveryInfo || "",
       availability: req.body.availability || "In Stock",
-      features: parseField(req.body.features) || [],
+      features: req.body.features || "",
       ingredients: req.body.ingredients || "",
-      nutritionalInfo: parseField(req.body.nutritionalInfo) || {},
-      tags: parseField(req.body.tags) || [],
-      shipping: parseField(req.body.shipping) || { freeShipping: false },
+      nutritionalInfo: {
+        calories: req.body.calories || "",
+        protein: req.body.protein || "",
+        carbs: req.body.carbs || "",
+        fat: req.body.fat || "",
+      },
+      tags: req.body.tags ? req.body.tags.split(',').map(tag => tag.trim()) : [],
+      shipping: {
+        freeShipping: req.body.freeShipping === 'true',
+        shippingTime: req.body.shippingTime || ""
+      },
       metaTitle: req.body.metaTitle || "",
       metaDescription: req.body.metaDescription || "",
       images: imageUrls,
       uploadedBy: req.user._id
     };
 
-    console.log("Product data prepared:", {
+    console.log("✅ Processed Product Data:", {
       title: productData.title,
       price: productData.price,
       category: productData.category,
-      imagesCount: productData.images.length
+      images: productData.images.length
     });
 
     // Validate required fields
@@ -139,7 +115,7 @@ export const createProduct = async (req, res) => {
     const newProduct = new Product(productData);
     const savedProduct = await newProduct.save();
 
-    console.log("✅ Product saved successfully:", savedProduct._id);
+    console.log("✅ Product saved to database:", savedProduct._id);
 
     res.status(201).json({
       message: "Product created successfully",
@@ -147,27 +123,19 @@ export const createProduct = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ PRODUCT CREATION ERROR:", error);
+    console.error("❌ Create product error:", error);
     
-    // More specific error handling
     if (error.name === 'ValidationError') {
       const errors = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({
-        message: "Validation Error",
+        message: "Validation failed",
         errors: errors
       });
     }
     
-    if (error.code === 11000) {
-      return res.status(400).json({
-        message: "Duplicate entry",
-        error: "A product with this slug or title already exists"
-      });
-    }
-
     res.status(500).json({
       message: "Internal server error",
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
+      error: error.message
     });
   }
 };
