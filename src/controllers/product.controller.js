@@ -55,8 +55,8 @@ export const getProductById = async (req, res) => {
 
 export const createProduct = async (req, res) => {
   try {
-    console.log("REQ FILES:", req.files);
-console.log("REQ BODY:", req.body);
+  console.log("REQ BODY:", JSON.stringify(req.body, null, 2));
+console.log("REQ FILES:", req.files);
     let imageUrls = [];
         console.log("FILES RECEIVED:", req.files); // 🔍 Debugging
 
