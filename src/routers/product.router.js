@@ -18,20 +18,11 @@ import { authMiddleware } from "../../middlewares/user.middleware.js";
 
 
 // ✅ Cloudinary Config
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
 
 // ✅ Multer Storage with Cloudinary
 const storage = new CloudinaryStorage({
   cloudinary,
-  params: async (req, file) => ({
-    folder: "freshcart-products",
-    allowed_formats: ["jpg", "jpeg", "png", "webp"],
-    resource_type: "image",
-  }),
+  params: { folder: "freshcart-products" },
 });
 
 
