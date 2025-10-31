@@ -1,11 +1,11 @@
 import Product from "../../schema/productList.model.js";
+import cloudinary from "../../config/cloudinary.js"; // ✅ add this import
 
-//  Get all products
+// ---------------------- Get All Products ----------------------
 export const getProducts = async (req, res) => {
   try {
     let query = Product.find().populate("category", "name");
 
-    // Agar ?sort=popular query aaye to clicks ke hisab se sort karo
     if (req.query.sort === "popular") {
       query = query.sort({ clicks: -1 });
     }
@@ -17,14 +17,13 @@ export const getProducts = async (req, res) => {
   }
 };
 
-
-// Get products by lifestyle
+// ---------------------- Get by Lifestyle ----------------------
 export const getProductsByLifestyle = async (req, res) => {
   try {
     const { type } = req.params;
     const products = await Product.find({ lifestyle: type }).populate("category", "name");
 
-    if (!products || products.length === 0) {
+    if (!products.length) {
       return res.status(404).json({ error: "No products found for this lifestyle" });
     }
 
@@ -34,12 +33,12 @@ export const getProductsByLifestyle = async (req, res) => {
   }
 };
 
-//  Get product by ID (also increment clicks counter)
+// ---------------------- Get by ID (and increase clicks) ----------------------
 export const getProductById = async (req, res) => {
   try {
     const product = await Product.findByIdAndUpdate(
       req.params.id,
-      { $inc: { clicks: 1 } },   // clicks +1 every time product is viewed
+      { $inc: { clicks: 1 } },
       { new: true }
     ).populate("category", "name");
 
@@ -51,55 +50,38 @@ export const getProductById = async (req, res) => {
   }
 };
 
-//Create new product
-
-// Create new product - Add uploadedBy field
+// ---------------------- Create Product (Cloudinary Upload) ----------------------
 export const createProduct = async (req, res) => {
   try {
     let imageUrls = [];
 
-    // Agar files upload hui ho
-    if (req.files && req.files.length > 0) {
-      imageUrls = req.files.map(
-        file => `https://freshcart-backend-4wrc.onrender.com/uploads/${file.filename}`
-      );
-    } 
-    // Agar body me images array ho aur files na ho
-    else if (req.body.images) {
-      try {
-        imageUrls = typeof req.body.images === "string" ? JSON.parse(req.body.images) : req.body.images;
-      } catch {
-        imageUrls = [req.body.images];
+    // ✅ Upload base64 or direct URLs to Cloudinary
+    if (req.body.images && Array.isArray(req.body.images)) {
+      for (const image of req.body.images) {
+        const result = await cloudinary.uploader.upload(image, {
+          folder: "freshcart_products",
+        });
+        imageUrls.push(result.secure_url);
       }
     }
 
-    // Function to parse JSON and handle $oid
+    // ✅ Helper to safely parse nested JSON
     const parseIfJson = (data) => {
       try {
         const parsed = typeof data === "string" ? JSON.parse(data) : data;
-
-        // Agar ObjectId format ho { $oid: "..." }
         if (parsed && typeof parsed === "object" && parsed.$oid) return parsed.$oid;
-
-        // Agar array ho to recursively parse
         if (Array.isArray(parsed)) return parsed.map(item => parseIfJson(item));
-
-        // Agar object ho to recursively parse each key
         if (parsed && typeof parsed === "object") {
           const newObj = {};
-          for (const key in parsed) {
-            newObj[key] = parseIfJson(parsed[key]);
-          }
+          for (const key in parsed) newObj[key] = parseIfJson(parsed[key]);
           return newObj;
         }
-
         return parsed;
       } catch {
         return data;
       }
     };
 
-    // Parse all nested JSON fields
     const parsedBody = {
       ...req.body,
       category: parseIfJson(req.body.category),
@@ -110,42 +92,38 @@ export const createProduct = async (req, res) => {
       tags: parseIfJson(req.body.tags),
     };
 
-    // Create new product with uploadedBy field
     const newProduct = new Product({
       ...parsedBody,
       images: imageUrls,
-      uploadedBy: req.user._id // Add the user who uploaded the product
+      uploadedBy: req.user?._id || null,
     });
 
     const savedProduct = await newProduct.save();
-
     res.status(201).json({
-      message: "Product uploaded successfully",
+      message: "✅ Product uploaded successfully to Cloudinary",
       product: savedProduct,
     });
   } catch (error) {
-    console.error("❌ Error creating products:", error);
-    res.status(500).json({ message: "Error creating products", error });
+    console.error("❌ Error creating product:", error);
+    res.status(500).json({ message: "Error creating product", error: error.message });
   }
 };
 
-// Get products uploaded by current user
+// ---------------------- Get Products Uploaded by Logged-in User ----------------------
 export const getMyProducts = async (req, res) => {
   try {
-    console.log("User from token:", req.user); // 🧩 check this
-    if (!req.user || !req.user._id) {
+    if (!req.user?._id) {
       return res.status(401).json({ error: "Unauthorized: No user found" });
     }
 
     const products = await Product.find({ uploadedBy: req.user._id });
     res.status(200).json(products);
   } catch (err) {
-    console.error("❌ My Products fetch error:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
-// Add order to product (this will be called when someone orders a product)
+// ---------------------- Add Product Order ----------------------
 export const addProductOrder = async (req, res) => {
   try {
     const { productId } = req.params;
@@ -157,32 +135,26 @@ export const addProductOrder = async (req, res) => {
         $push: {
           orders: {
             user: req.user._id,
-            quantity: quantity,
-            status: "pending"
-          }
-        }
+            quantity,
+            status: "pending",
+          },
+        },
       },
       { new: true }
     ).populate("orders.user", "name email");
 
-    if (!updatedProduct) {
-      return res.status(404).json({ error: "Product not found" });
-    }
+    if (!updatedProduct) return res.status(404).json({ error: "Product not found" });
 
     res.status(200).json({
       message: "Order added to product",
-      product: updatedProduct
+      product: updatedProduct,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-
-
-
-
-//  Update product
+// ---------------------- Update Product ----------------------
 export const updateProduct = async (req, res) => {
   try {
     const updatedProduct = await Product.findByIdAndUpdate(
@@ -190,31 +162,34 @@ export const updateProduct = async (req, res) => {
       req.body,
       { new: true }
     );
+
     if (!updatedProduct) return res.status(404).json({ error: "Product not found" });
+
     res.status(200).json(updatedProduct);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-//  Delete product
+// ---------------------- Delete Product ----------------------
 export const deleteProduct = async (req, res) => {
   try {
     const deletedProduct = await Product.findByIdAndDelete(req.params.id);
     if (!deletedProduct) return res.status(404).json({ error: "Product not found" });
+
     res.status(200).json({ message: "Product deleted successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-//  Get products by tag
+// ---------------------- Get Products by Tag ----------------------
 export const getProductsByTag = async (req, res) => {
   try {
     const { tag } = req.params;
     const products = await Product.find({ tags: tag }).populate("category", "name");
 
-    if (!products || products.length === 0) {
+    if (!products.length) {
       return res.status(404).json({ error: "No products found for this tag" });
     }
 
@@ -224,7 +199,7 @@ export const getProductsByTag = async (req, res) => {
   }
 };
 
-// Get most popular products (based on clicks)
+// ---------------------- Get Popular Products ----------------------
 export const getPopularProducts = async (req, res) => {
   try {
     const products = await Product.find()
@@ -235,7 +210,6 @@ export const getPopularProducts = async (req, res) => {
 
     res.status(200).json(products);
   } catch (err) {
-    console.error("Popular Products Error:", err);
     res.status(500).json({ error: "Server failed. Check DB and category references." });
   }
 };
