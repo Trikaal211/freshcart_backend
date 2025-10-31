@@ -51,21 +51,20 @@ export const getProductById = async (req, res) => {
 };
 
 // ---------------------- Create Product (Cloudinary Upload) ----------------------
+
+
 export const createProduct = async (req, res) => {
   try {
     let imageUrls = [];
 
-    // ✅ Upload base64 or direct URLs to Cloudinary
-    if (req.body.images && Array.isArray(req.body.images)) {
-      for (const image of req.body.images) {
-        const result = await cloudinary.uploader.upload(image, {
-          folder: "freshcart_products",
-        });
-        imageUrls.push(result.secure_url);
+    // ✅ 1. Upload files from multer (req.files)
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        imageUrls.push(file.path); // multer-storage-cloudinary already uploads & gives file.path = cloud URL
       }
     }
 
-    // ✅ Helper to safely parse nested JSON
+    // ✅ 2. Helper for nested JSON parsing
     const parseIfJson = (data) => {
       try {
         const parsed = typeof data === "string" ? JSON.parse(data) : data;
@@ -82,6 +81,7 @@ export const createProduct = async (req, res) => {
       }
     };
 
+    // ✅ 3. Parse other fields
     const parsedBody = {
       ...req.body,
       category: parseIfJson(req.body.category),
@@ -92,6 +92,7 @@ export const createProduct = async (req, res) => {
       tags: parseIfJson(req.body.tags),
     };
 
+    // ✅ 4. Create product
     const newProduct = new Product({
       ...parsedBody,
       images: imageUrls,
@@ -99,6 +100,7 @@ export const createProduct = async (req, res) => {
     });
 
     const savedProduct = await newProduct.save();
+
     res.status(201).json({
       message: "✅ Product uploaded successfully to Cloudinary",
       product: savedProduct,
@@ -108,6 +110,7 @@ export const createProduct = async (req, res) => {
     res.status(500).json({ message: "Error creating product", error: error.message });
   }
 };
+
 
 // ---------------------- Get Products Uploaded by Logged-in User ----------------------
 export const getMyProducts = async (req, res) => {
