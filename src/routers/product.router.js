@@ -17,7 +17,7 @@ import {
 import { authMiddleware } from "../../middlewares/user.middleware.js";
 import dotenv from "dotenv";
 
-dotenv.config();
+dotenv.config({ path: "../../.env" });
 
 // ✅ Cloudinary Config
 cloudinary.config({
@@ -29,11 +29,13 @@ cloudinary.config({
 // ✅ Multer Storage with Cloudinary
 const storage = new CloudinaryStorage({
   cloudinary,
-  params: {
-    folder: "freshcart-products", // folder name in Cloudinary
+  params: async (req, file) => ({
+    folder: "freshcart-products",
     allowed_formats: ["jpg", "jpeg", "png", "webp"],
-  },
+    resource_type: "image",
+  }),
 });
+
 
 const upload = multer({ storage });
 

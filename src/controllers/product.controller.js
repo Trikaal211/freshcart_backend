@@ -60,10 +60,10 @@ export const createProduct = async (req, res) => {
 
     // Agar files upload hui ho
 imageUrls = req.files.map(f => f.path || f.secure_url || f.url);
-
+  
     // Agar body me images array ho aur files na ho
   
-
+  
     // Function to parse JSON and handle $oid
     const parseIfJson = (data) => {
       try {
