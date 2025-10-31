@@ -15,9 +15,7 @@ import {
   addProductOrder
 } from "../controllers/product.controller.js";
 import { authMiddleware } from "../../middlewares/user.middleware.js";
-import dotenv from "dotenv";
 
-dotenv.config({ path: "../../.env" });
 
 // ✅ Cloudinary Config
 cloudinary.config({
