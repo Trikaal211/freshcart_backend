@@ -1,11 +1,11 @@
 import Product from "../../schema/productList.model.js";
-import cloudinary from "../../config/cloudinary.js"; // ✅ add this import
 
-// ---------------------- Get All Products ----------------------
+//  Get all products
 export const getProducts = async (req, res) => {
   try {
     let query = Product.find().populate("category", "name");
 
+    // Agar ?sort=popular query aaye to clicks ke hisab se sort karo
     if (req.query.sort === "popular") {
       query = query.sort({ clicks: -1 });
     }
@@ -17,13 +17,14 @@ export const getProducts = async (req, res) => {
   }
 };
 
-// ---------------------- Get by Lifestyle ----------------------
+
+// Get products by lifestyle
 export const getProductsByLifestyle = async (req, res) => {
   try {
     const { type } = req.params;
     const products = await Product.find({ lifestyle: type }).populate("category", "name");
 
-    if (!products.length) {
+    if (!products || products.length === 0) {
       return res.status(404).json({ error: "No products found for this lifestyle" });
     }
 
@@ -33,12 +34,12 @@ export const getProductsByLifestyle = async (req, res) => {
   }
 };
 
-// ---------------------- Get by ID (and increase clicks) ----------------------
+//  Get product by ID (also increment clicks counter)
 export const getProductById = async (req, res) => {
   try {
     const product = await Product.findByIdAndUpdate(
       req.params.id,
-      { $inc: { clicks: 1 } },
+      { $inc: { clicks: 1 } },   // clicks +1 every time product is viewed
       { new: true }
     ).populate("category", "name");
 
@@ -50,112 +51,101 @@ export const getProductById = async (req, res) => {
   }
 };
 
-// ---------------------- Create Product (Cloudinary Upload) ----------------------
+//Create new product
 
-
+// Create new product - Add uploadedBy field
 export const createProduct = async (req, res) => {
   try {
-    console.log("=== CREATE PRODUCT CONTROLLER ===");
-    console.log("Uploaded Image URLs:", req.uploadedImageUrls);
-    console.log("Request Body:", req.body);
+    let imageUrls = [];
 
-    // Use manually uploaded image URLs
-    const imageUrls = req.uploadedImageUrls || [];
+    // Agar files upload hui ho
+    if (req.files && req.files.length > 0) {
+      imageUrls = req.files.map(
+        file => `https://freshcart-backend-4wrc.onrender.com/uploads/${file.filename}`
+      );
+    } 
+    // Agar body me images array ho aur files na ho
+    else if (req.body.images) {
+      try {
+        imageUrls = typeof req.body.images === "string" ? JSON.parse(req.body.images) : req.body.images;
+      } catch {
+        imageUrls = [req.body.images];
+      }
+    }
 
-    // Simple field parsing - no complex JSON parsing needed
-    const productData = {
-      title: req.body.title,
-      slug: req.body.slug,
-      brand: req.body.brand || "",
-      description: req.body.description || "",
-      price: parseFloat(req.body.price) || 0,
-      discountPrice: req.body.discountPrice ? parseFloat(req.body.discountPrice) : null,
-      quantity: parseInt(req.body.quantity) || 1,
-      weight: req.body.weight || "",
-      category: req.body.category, // Make sure this is a valid category ID
-      lifestyle: Array.isArray(req.body.lifestyle) ? req.body.lifestyle : 
-                (req.body.lifestyle ? [req.body.lifestyle] : []),
-      deliveryInfo: req.body.deliveryInfo || "",
-      availability: req.body.availability || "In Stock",
-      features: req.body.features || "",
-      ingredients: req.body.ingredients || "",
-      nutritionalInfo: {
-        calories: req.body.calories || "",
-        protein: req.body.protein || "",
-        carbs: req.body.carbs || "",
-        fat: req.body.fat || "",
-      },
-      tags: req.body.tags ? req.body.tags.split(',').map(tag => tag.trim()) : [],
-      shipping: {
-        freeShipping: req.body.freeShipping === 'true',
-        shippingTime: req.body.shippingTime || ""
-      },
-      metaTitle: req.body.metaTitle || "",
-      metaDescription: req.body.metaDescription || "",
-      images: imageUrls,
-      uploadedBy: req.user._id
+    // Function to parse JSON and handle $oid
+    const parseIfJson = (data) => {
+      try {
+        const parsed = typeof data === "string" ? JSON.parse(data) : data;
+
+        // Agar ObjectId format ho { $oid: "..." }
+        if (parsed && typeof parsed === "object" && parsed.$oid) return parsed.$oid;
+
+        // Agar array ho to recursively parse
+        if (Array.isArray(parsed)) return parsed.map(item => parseIfJson(item));
+
+        // Agar object ho to recursively parse each key
+        if (parsed && typeof parsed === "object") {
+          const newObj = {};
+          for (const key in parsed) {
+            newObj[key] = parseIfJson(parsed[key]);
+          }
+          return newObj;
+        }
+
+        return parsed;
+      } catch {
+        return data;
+      }
     };
 
-    console.log("✅ Processed Product Data:", {
-      title: productData.title,
-      price: productData.price,
-      category: productData.category,
-      images: productData.images.length
+    // Parse all nested JSON fields
+    const parsedBody = {
+      ...req.body,
+      category: parseIfJson(req.body.category),
+      nutritionalInfo: parseIfJson(req.body.nutritionalInfo),
+      shipping: parseIfJson(req.body.shipping),
+      lifestyle: parseIfJson(req.body.lifestyle),
+      features: parseIfJson(req.body.features),
+      tags: parseIfJson(req.body.tags),
+    };
+
+    // Create new product with uploadedBy field
+    const newProduct = new Product({
+      ...parsedBody,
+      images: imageUrls,
+      uploadedBy: req.user._id // Add the user who uploaded the product
     });
 
-    // Validate required fields
-    if (!productData.title || !productData.price || !productData.category) {
-      return res.status(400).json({
-        message: "Missing required fields",
-        required: ["title", "price", "category"]
-      });
-    }
-
-    // Create and save product
-    const newProduct = new Product(productData);
     const savedProduct = await newProduct.save();
 
-    console.log("✅ Product saved to database:", savedProduct._id);
-
     res.status(201).json({
-      message: "Product created successfully",
-      product: savedProduct
+      message: "Product uploaded successfully",
+      product: savedProduct,
     });
-
   } catch (error) {
-    console.error("❌ Create product error:", error);
-    
-    if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors).map(err => err.message);
-      return res.status(400).json({
-        message: "Validation failed",
-        errors: errors
-      });
-    }
-    
-    res.status(500).json({
-      message: "Internal server error",
-      error: error.message
-    });
+    console.error("❌ Error creating products:", error);
+    res.status(500).json({ message: "Error creating products", error });
   }
 };
 
-
-// ---------------------- Get Products Uploaded by Logged-in User ----------------------
+// Get products uploaded by current user
 export const getMyProducts = async (req, res) => {
   try {
-    if (!req.user?._id) {
+    console.log("User from token:", req.user); // 🧩 check this
+    if (!req.user || !req.user._id) {
       return res.status(401).json({ error: "Unauthorized: No user found" });
     }
 
     const products = await Product.find({ uploadedBy: req.user._id });
     res.status(200).json(products);
   } catch (err) {
+    console.error("❌ My Products fetch error:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
-// ---------------------- Add Product Order ----------------------
+// Add order to product (this will be called when someone orders a product)
 export const addProductOrder = async (req, res) => {
   try {
     const { productId } = req.params;
@@ -167,26 +157,32 @@ export const addProductOrder = async (req, res) => {
         $push: {
           orders: {
             user: req.user._id,
-            quantity,
-            status: "pending",
-          },
-        },
+            quantity: quantity,
+            status: "pending"
+          }
+        }
       },
       { new: true }
     ).populate("orders.user", "name email");
 
-    if (!updatedProduct) return res.status(404).json({ error: "Product not found" });
+    if (!updatedProduct) {
+      return res.status(404).json({ error: "Product not found" });
+    }
 
     res.status(200).json({
       message: "Order added to product",
-      product: updatedProduct,
+      product: updatedProduct
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// ---------------------- Update Product ----------------------
+
+
+
+
+//  Update product
 export const updateProduct = async (req, res) => {
   try {
     const updatedProduct = await Product.findByIdAndUpdate(
@@ -194,34 +190,31 @@ export const updateProduct = async (req, res) => {
       req.body,
       { new: true }
     );
-
     if (!updatedProduct) return res.status(404).json({ error: "Product not found" });
-
     res.status(200).json(updatedProduct);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// ---------------------- Delete Product ----------------------
+//  Delete product
 export const deleteProduct = async (req, res) => {
   try {
     const deletedProduct = await Product.findByIdAndDelete(req.params.id);
     if (!deletedProduct) return res.status(404).json({ error: "Product not found" });
-
     res.status(200).json({ message: "Product deleted successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// ---------------------- Get Products by Tag ----------------------
+//  Get products by tag
 export const getProductsByTag = async (req, res) => {
   try {
     const { tag } = req.params;
     const products = await Product.find({ tags: tag }).populate("category", "name");
 
-    if (!products.length) {
+    if (!products || products.length === 0) {
       return res.status(404).json({ error: "No products found for this tag" });
     }
 
@@ -231,7 +224,7 @@ export const getProductsByTag = async (req, res) => {
   }
 };
 
-// ---------------------- Get Popular Products ----------------------
+// Get most popular products (based on clicks)
 export const getPopularProducts = async (req, res) => {
   try {
     const products = await Product.find()
@@ -242,6 +235,7 @@ export const getPopularProducts = async (req, res) => {
 
     res.status(200).json(products);
   } catch (err) {
+    console.error("Popular Products Error:", err);
     res.status(500).json({ error: "Server failed. Check DB and category references." });
   }
 };
