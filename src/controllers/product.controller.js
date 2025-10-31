@@ -60,12 +60,13 @@ export const createProduct = async (req, res) => {
 
     // Agar files upload hui ho
 if (req.files && req.files.length > 0) {
+  console.log("📦 Full File Object:", JSON.stringify(req.files, null, 2));
+  
   imageUrls = req.files.map((file) => {
     if (file.path && typeof file.path === "string") return file.path;
     if (file.secure_url && typeof file.secure_url === "string") return file.secure_url;
     if (file.url && typeof file.url === "string") return file.url;
 
-    // agar pura object hai (jaisa tu keh raha hai)
     if (typeof file === "object" && file.path?.url) return file.path.url;
     if (typeof file === "object" && file.url?.url) return file.url.url;
 
