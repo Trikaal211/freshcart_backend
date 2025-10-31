@@ -59,9 +59,21 @@ export const createProduct = async (req, res) => {
     let imageUrls = [];
 
     // Agar files upload hui ho
-  if (req.files && req.files.length > 0) {
-  imageUrls = req.files.map(file => file.path || file.secure_url || file.url);
-  console.log("✅ Cloudinary image URLs:", imageUrls);
+if (req.files && req.files.length > 0) {
+  imageUrls = req.files.map((file) => {
+    if (file.path && typeof file.path === "string") return file.path;
+    if (file.secure_url && typeof file.secure_url === "string") return file.secure_url;
+    if (file.url && typeof file.url === "string") return file.url;
+
+    // agar pura object hai (jaisa tu keh raha hai)
+    if (typeof file === "object" && file.path?.url) return file.path.url;
+    if (typeof file === "object" && file.url?.url) return file.url.url;
+
+    console.log("⚠️ Unknown file structure:", file);
+    return null;
+  }).filter(Boolean);
+
+  console.log("✅ Extracted Image URLs:", imageUrls);
 }
     // Agar body me images array ho aur files na ho
     else if (req.body.images) {
