@@ -56,6 +56,8 @@ export const getProductById = async (req, res) => {
 export const createProduct = async (req, res) => {
   try {
     let imageUrls = [];
+        console.log("FILES RECEIVED:", req.files); // 🔍 Debugging
+
 
     // ✅ 1. Upload files from multer (req.files)
     if (req.files && req.files.length > 0) {
