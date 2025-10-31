@@ -59,17 +59,8 @@ export const createProduct = async (req, res) => {
     let imageUrls = [];
 
     // Agar files upload hui ho
-if (req.files && req.files.length > 0) {
-  console.log("📦 Full File Object:", JSON.stringify(req.files, null, 2));
-  
-imageUrls = req.files.map(f => 
-  f.path?.url || 
-  f.secure_url || 
-  f.url || 
-  (typeof f.path === "string" ? f.path : null)
-).filter(Boolean);
-  console.log("✅ Extracted Image URLs:", imageUrls);
-}
+imageUrls = req.files.map(f => f.path || f.secure_url || f.url);
+
     // Agar body me images array ho aur files na ho
     else if (req.body.images) {
       try {
