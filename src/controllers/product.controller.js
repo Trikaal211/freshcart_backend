@@ -4,6 +4,9 @@ import Product from "../../schema/productList.model.js";
 export const createProduct = async (req, res) => {
   try {
     let imageUrls = [];
+      console.log("🟢 Received product upload");
+    console.log("📦 Files:", req.files);
+    console.log("🧾 Body:", req.body);
 
     // ✅ Agar files upload hui hain (Cloudinary multer se)
     if (req.files && req.files.length > 0) {
