@@ -49,8 +49,18 @@ productRouter.get("/my-products", authMiddleware, getMyProducts);
 productRouter.get("/:id", getProductById);
 
 // ✅ FIXED: Product creation route with proper middleware order
-productRouter.post("/", authMiddleware, upload.array("images", 5), createProduct);
-
+productRouter.post("/", authMiddleware, (req, res, next) => {
+  upload.array("images", 5)(req, res, function (err) {
+    if (err) {
+      console.error("❌ Multer upload error:", err);
+      return res.status(400).json({ 
+        message: "File upload failed", 
+        error: err.message 
+      });
+    }
+    next();
+  });
+}, createProduct);
 productRouter.post("/:productId/order", authMiddleware, addProductOrder);
 productRouter.put("/:id", updateProduct);
 productRouter.delete("/:id", deleteProduct);
