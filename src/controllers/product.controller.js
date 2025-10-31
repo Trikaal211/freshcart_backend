@@ -59,10 +59,10 @@ export const createProduct = async (req, res) => {
     let imageUrls = [];
 
     // Agar files upload hui ho
-    if (req.files && req.files.length > 0) {
-imageUrls = req.files.map(file => file.path); // Cloudinary ne direct URL de diya hota hai
-
-    } 
+  if (req.files && req.files.length > 0) {
+  imageUrls = req.files.map(file => file.path || file.secure_url || file.url);
+  console.log("✅ Cloudinary image URLs:", imageUrls);
+}
     // Agar body me images array ho aur files na ho
     else if (req.body.images) {
       try {
