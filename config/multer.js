@@ -4,11 +4,14 @@ import cloudinary from "./cloudinary.js";
 
 const storage = new CloudinaryStorage({
   cloudinary,
-  params: async (req, file) => ({
-    folder: "freshcart_uploads", // ✅ Folder name
-    allowed_formats: ["jpg", "png", "jpeg", "webp"],
-    public_id: file.originalname.split(".")[0], // optional
-  }),
+  params: async (req, file) => {
+    console.log("📸 Uploading file to Cloudinary:", file.originalname);
+    return {
+      folder: "freshcart_uploads",
+      allowed_formats: ["jpg", "png", "jpeg", "webp"],
+      resource_type: "auto",
+    };
+  },
 });
 
 const upload = multer({ storage });
