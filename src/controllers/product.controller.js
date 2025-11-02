@@ -53,6 +53,7 @@ export const getProductById = async (req, res) => {
 };
 
 // 🟢 Create new product
+
 export const createProduct = async (req, res) => {
   try {
     console.log("🟢 CREATE PRODUCT API CALLED");
@@ -70,8 +71,11 @@ export const createProduct = async (req, res) => {
     if (req.files && req.files.length > 0) {
       imageUrls = req.files.map((file) => {
         console.log("🖼 File details:", file);
-        return file.path || file.secure_url || file.url || "";
+        // ✅ Cloudinary always provides 'path' and 'secure_url'
+        return file.path || file.secure_url || "";
       }).filter(url => url !== "");
+    } else {
+      console.log("⚠️ No images uploaded");
     }
 
     // 🧩 Parse Lifestyle Array Safely
@@ -79,7 +83,7 @@ export const createProduct = async (req, res) => {
     if (req.body.lifestyle) {
       try {
         lifestyleArray = JSON.parse(req.body.lifestyle);
-      } catch (err) {
+      } catch {
         lifestyleArray = Array.isArray(req.body.lifestyle)
           ? req.body.lifestyle
           : [req.body.lifestyle];
@@ -97,7 +101,7 @@ export const createProduct = async (req, res) => {
       quantity: Number(req.body.quantity) || 1,
       category: req.body.category || null,
       availability: req.body.availability || "In Stock",
-      images: imageUrls,
+      images: imageUrls, // ✅ now Cloudinary URLs stored
       uploadedBy: req.user._id,
       subtitle: req.body.subtitle || "",
       weight: req.body.weight || "N/A",
@@ -107,7 +111,7 @@ export const createProduct = async (req, res) => {
 
     console.log("✅ Final Product Data:", productData);
 
-    // 🧾 Validation: category required
+    // 🧾 Validation
     if (!productData.category) {
       return res.status(400).json({ error: "Category is required" });
     }
