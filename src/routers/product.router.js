@@ -16,20 +16,11 @@ import {
   addProductOrder
 } from "../controllers/product.controller.js";
 import { authMiddleware } from "../../middlewares/user.middleware.js";  
+import upload from "../../config/multer.js";
 
 
-// ✅ Cloudinary Config 
 
-// ✅ Multer Storage with Cloudinary 
-const storage = new CloudinaryStorage({
-  cloudinary,
-  params: { folder: "freshcart-products" },
-});
-
-
-const upload = multer({ storage });
-
-// ✅ Router
+// Router
 const productRouter = express.Router();
 
 productRouter.get("/", getProducts);
@@ -39,7 +30,7 @@ productRouter.get("/tag/:tag", getProductsByTag);
 productRouter.get("/my-products", authMiddleware, getMyProducts);
 productRouter.get("/:id", getProductById);
 
-// ✅ Now uploads go to Cloudinary instead of local folder
+// Now uploads go to Cloudinary instead of local folder
 productRouter.post
 
 ("/", authMiddleware, upload.array("images", 5), (req, res, next) => {
