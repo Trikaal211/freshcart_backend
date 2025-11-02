@@ -10,6 +10,8 @@ const storage = new CloudinaryStorage({
       folder: "freshcart_uploads",
       allowed_formats: ["jpg", "png", "jpeg", "webp"],
       resource_type: "auto",
+      use_filename: true,
+      unique_filename: false,
     };
   },
 });

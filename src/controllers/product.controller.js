@@ -56,6 +56,8 @@ export const getProductById = async (req, res) => {
 
 export const createProduct = async (req, res) => {
   try {
+    console.log("🖼 File details full:", JSON.stringify(req.files, null, 2));
+
     console.log("🟢 CREATE PRODUCT API CALLED");
     console.log("📩 User:", req.user);
     console.log("📦 Body:", req.body);
