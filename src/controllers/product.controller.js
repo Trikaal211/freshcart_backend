@@ -57,52 +57,68 @@ export const getProductById = async (req, res) => {
 export const createProduct = async (req, res) => {
   try {
     console.log("🔄 Starting product creation...");
+    console.log("📦 Request body:", req.body);
+    console.log("📸 Files:", req.files);
     
-    // Check if user is authenticated
+    // Check authentication
     if (!req.user || !req.user._id) {
       return res.status(401).json({ error: "User not authenticated" });
     }
 
+    // Validate required fields
+    const requiredFields = ['title', 'slug', 'brand', 'description', 'price', 'category'];
+    const missingFields = requiredFields.filter(field => !req.body[field]);
+    
+    if (missingFields.length > 0) {
+      return res.status(400).json({ 
+        error: "Missing required fields", 
+        missingFields 
+      });
+    }
+
     let imageUrls = [];
 
-    // Handle file uploads safely
+    // Handle file uploads
     if (req.files && req.files.length > 0) {
       imageUrls = req.files.map(file => file.path || file.secure_url);
       console.log("✅ Uploaded images:", imageUrls);
-    } else {
-      console.log("⚠️ No images uploaded");
     }
 
     // Parse JSON fields safely
     const parseField = (field) => {
-      if (!field) return field;
+      if (!field) return undefined;
       try {
         return typeof field === 'string' ? JSON.parse(field) : field;
       } catch (error) {
-        console.log(`❌ Failed to parse ${field}, keeping as string`);
-        return field;
+        return field; // Return as string if parsing fails
       }
     };
 
-    // Prepare product data
+    // Prepare product data with proper validation
     const productData = {
-      ...req.body,
-      category: parseField(req.body.category),
-      nutritionalInfo: parseField(req.body.nutritionalInfo),
-      shipping: parseField(req.body.shipping),
-      lifestyle: parseField(req.body.lifestyle) || [],
-      features: parseField(req.body.features),
-      tags: parseField(req.body.tags) || [],
+      title: req.body.title,
+      slug: req.body.slug,
+      brand: req.body.brand,
+      description: req.body.description,
+      price: parseFloat(req.body.price),
+      discountPrice: req.body.discountPrice ? parseFloat(req.body.discountPrice) : 0,
+      quantity: parseInt(req.body.quantity) || 1,
+      category: req.body.category, // This should be a valid ObjectId
+      availability: req.body.availability || "In Stock",
       images: imageUrls,
       uploadedBy: req.user._id,
       
-      // Ensure required fields have defaults
-      price: parseFloat(req.body.price) || 0,
-      quantity: parseInt(req.body.quantity) || 1,
-      clicks: 0
+      // Optional fields
+      subtitle: req.body.subtitle || "",
+      weight: req.body.weight || "N/A",
+      lifestyle: parseField(req.body.lifestyle) || [],
+      features: parseField(req.body.features) || [],
+      tags: parseField(req.body.tags) || [],
+      nutritionalInfo: parseField(req.body.nutritionalInfo) || {},
+      shipping: parseField(req.body.shipping) || { freeShipping: false },
     };
 
-    console.log("📋 Final product data:", productData);
+    console.log("📋 Final product data for saving:", productData);
 
     // Create and save product
     const newProduct = new Product(productData);
@@ -118,11 +134,19 @@ export const createProduct = async (req, res) => {
   } catch (error) {
     console.error("❌ Product creation error:", error);
     
-    // More specific error responses
+    // Specific error handling
     if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({ 
         error: "Validation Error", 
-        details: error.errors 
+        details: validationErrors 
+      });
+    }
+    
+    if (error.name === 'CastError') {
+      return res.status(400).json({ 
+        error: "Invalid data format",
+        message: `Invalid ${error.path}: ${error.value}`
       });
     }
     
