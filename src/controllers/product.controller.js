@@ -56,45 +56,35 @@ export const getProductById = async (req, res) => {
 // Create new product - Add uploadedBy field
 export const createProduct = async (req, res) => {
   try {
-    console.log("🔄 Starting product creation...");
-    console.log("📦 Request body:", req.body);
+    console.log("🔄 CREATE PRODUCT STARTED...");
+    console.log("📧 User:", req.user);
+    console.log("📦 Request Body:", req.body);
     console.log("📸 Files:", req.files);
     
     // Check authentication
     if (!req.user || !req.user._id) {
+      console.log("❌ No user found");
       return res.status(401).json({ error: "User not authenticated" });
-    }
-
-    // Validate required fields
-    const requiredFields = ['title', 'slug', 'brand', 'description', 'price', 'category'];
-    const missingFields = requiredFields.filter(field => !req.body[field]);
-    
-    if (missingFields.length > 0) {
-      return res.status(400).json({ 
-        error: "Missing required fields", 
-        missingFields 
-      });
     }
 
     let imageUrls = [];
 
     // Handle file uploads
     if (req.files && req.files.length > 0) {
-      imageUrls = req.files.map(file => file.path || file.secure_url);
-      console.log("✅ Uploaded images:", imageUrls);
+      console.log("✅ Files received:", req.files.length);
+      imageUrls = req.files.map(file => {
+        console.log("File details:", {
+          path: file.path,
+          secure_url: file.secure_url,
+          url: file.url
+        });
+        return file.path || file.secure_url || file.url;
+      });
+    } else {
+      console.log("⚠️ No files uploaded");
     }
 
-    // Parse JSON fields safely
-    const parseField = (field) => {
-      if (!field) return undefined;
-      try {
-        return typeof field === 'string' ? JSON.parse(field) : field;
-      } catch (error) {
-        return field; // Return as string if parsing fails
-      }
-    };
-
-    // Prepare product data with proper validation
+    // Simple parsing - avoid complex JSON parsing for now
     const productData = {
       title: req.body.title,
       slug: req.body.slug,
@@ -103,27 +93,25 @@ export const createProduct = async (req, res) => {
       price: parseFloat(req.body.price),
       discountPrice: req.body.discountPrice ? parseFloat(req.body.discountPrice) : 0,
       quantity: parseInt(req.body.quantity) || 1,
-      category: req.body.category, // This should be a valid ObjectId
+      category: req.body.category,
       availability: req.body.availability || "In Stock",
       images: imageUrls,
       uploadedBy: req.user._id,
       
-      // Optional fields
+      // Optional fields with simple handling
       subtitle: req.body.subtitle || "",
       weight: req.body.weight || "N/A",
-      lifestyle: parseField(req.body.lifestyle) || [],
-      features: parseField(req.body.features) || [],
-      tags: parseField(req.body.tags) || [],
-      nutritionalInfo: parseField(req.body.nutritionalInfo) || {},
-      shipping: parseField(req.body.shipping) || { freeShipping: false },
+      lifestyle: req.body.lifestyle ? JSON.parse(req.body.lifestyle) : [],
+      tags: req.body.tags ? [req.body.tags] : [],
     };
 
-    console.log("📋 Final product data for saving:", productData);
+    console.log("🎯 Final product data to save:", productData);
 
     // Create and save product
     const newProduct = new Product(productData);
+    console.log("📝 New product instance created");
+    
     const savedProduct = await newProduct.save();
-
     console.log("✅ Product saved successfully:", savedProduct._id);
 
     res.status(201).json({
@@ -132,21 +120,16 @@ export const createProduct = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ Product creation error:", error);
+    console.error("❌ PRODUCT CREATION ERROR:", error);
+    console.error("❌ Error name:", error.name);
+    console.error("❌ Error message:", error.message);
+    console.error("❌ Error stack:", error.stack);
     
-    // Specific error handling
     if (error.name === 'ValidationError') {
-      const validationErrors = Object.values(error.errors).map(err => err.message);
+      console.log("🔍 Validation errors:", error.errors);
       return res.status(400).json({ 
-        error: "Validation Error", 
-        details: validationErrors 
-      });
-    }
-    
-    if (error.name === 'CastError') {
-      return res.status(400).json({ 
-        error: "Invalid data format",
-        message: `Invalid ${error.path}: ${error.value}`
+        error: "Validation Error",
+        details: Object.values(error.errors).map(err => err.message)
       });
     }
     
