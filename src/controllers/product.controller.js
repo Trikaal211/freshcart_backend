@@ -1,11 +1,10 @@
 import Product from "../../schema/productList.model.js";
 
-//  Get all products
+// 🟢 Get all products
 export const getProducts = async (req, res) => {
   try {
     let query = Product.find().populate("category", "name");
 
-    // Agar ?sort=popular query aaye to clicks ke hisab se sort karo
     if (req.query.sort === "popular") {
       query = query.sort({ clicks: -1 });
     }
@@ -13,12 +12,12 @@ export const getProducts = async (req, res) => {
     const products = await query;
     res.status(200).json(products);
   } catch (err) {
+    console.error("❌ getProducts Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
-
-// Get products by lifestyle
+// 🟢 Get products by lifestyle
 export const getProductsByLifestyle = async (req, res) => {
   try {
     const { type } = req.params;
@@ -30,16 +29,17 @@ export const getProductsByLifestyle = async (req, res) => {
 
     res.status(200).json(products);
   } catch (err) {
+    console.error("❌ getProductsByLifestyle Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
-//  Get product by ID (also increment clicks counter)
+// 🟢 Get product by ID (auto increment clicks)
 export const getProductById = async (req, res) => {
   try {
     const product = await Product.findByIdAndUpdate(
       req.params.id,
-      { $inc: { clicks: 1 } },   // clicks +1 every time product is viewed
+      { $inc: { clicks: 1 } },
       { new: true }
     ).populate("category", "name");
 
@@ -47,107 +47,100 @@ export const getProductById = async (req, res) => {
 
     res.status(200).json(product);
   } catch (err) {
+    console.error("❌ getProductById Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
-//Create new product
-
-// Create new product - Add uploadedBy field
+// 🟢 Create new product
 export const createProduct = async (req, res) => {
   try {
-    console.log("🔄 CREATE PRODUCT STARTED...");
-    console.log("📧 User:", req.user);
-    console.log("📦 Request Body:", req.body);
+    console.log("🟢 CREATE PRODUCT API CALLED");
+    console.log("📩 User:", req.user);
+    console.log("📦 Body:", req.body);
     console.log("📸 Files:", req.files);
 
-    // ✅ Check authentication
+    // 🔒 Authentication Check
     if (!req.user || !req.user._id) {
-      console.log("❌ No user found");
-      return res.status(401).json({ error: "User not authenticated" });
+      return res.status(401).json({ error: "Unauthorized: user not found" });
     }
 
+    // 🖼 Handle Images (Cloudinary)
     let imageUrls = [];
-
-    // ✅ Handle file uploads (via Multer + Cloudinary)
     if (req.files && req.files.length > 0) {
-      console.log("✅ Files received:", req.files.length);
-      imageUrls = req.files.map(file => {
-        console.log("File details:", {
-          path: file.path,
-          secure_url: file.secure_url,
-          url: file.url
-        });
-        return file.path || file.secure_url || file.url;
-      });
-    } else {
-      console.log("⚠️ No files uploaded");
+      imageUrls = req.files.map((file) => {
+        console.log("🖼 File details:", file);
+        return file.path || file.secure_url || file.url || "";
+      }).filter(url => url !== "");
     }
 
-    // ✅ Product Data
+    // 🧩 Parse Lifestyle Array Safely
+    let lifestyleArray = [];
+    if (req.body.lifestyle) {
+      try {
+        lifestyleArray = JSON.parse(req.body.lifestyle);
+      } catch (err) {
+        lifestyleArray = Array.isArray(req.body.lifestyle)
+          ? req.body.lifestyle
+          : [req.body.lifestyle];
+      }
+    }
+
+    // 🧮 Product Data
     const productData = {
-      title: req.body.title,
-      slug: req.body.slug,
-      brand: req.body.brand,
-      description: req.body.description,
-      price: parseFloat(req.body.price),
-      discountPrice: req.body.discountPrice ? parseFloat(req.body.discountPrice) : 0,
-      quantity: parseInt(req.body.quantity) || 1,
-      category: req.body.category,
+      title: req.body.title?.trim() || "Untitled Product",
+      slug: req.body.slug?.trim() || req.body.title?.trim().toLowerCase().replace(/\s+/g, "-"),
+      brand: req.body.brand || "Unknown",
+      description: req.body.description || "",
+      price: Number(req.body.price) || 0,
+      discountPrice: Number(req.body.discountPrice) || 0,
+      quantity: Number(req.body.quantity) || 1,
+      category: req.body.category || null,
       availability: req.body.availability || "In Stock",
       images: imageUrls,
       uploadedBy: req.user._id,
-
-      // Optional fields
       subtitle: req.body.subtitle || "",
       weight: req.body.weight || "N/A",
-      lifestyle: req.body.lifestyle ? JSON.parse(req.body.lifestyle) : [],
+      lifestyle: lifestyleArray,
       tags: req.body.tags ? [req.body.tags] : [],
     };
 
-    console.log("🎯 Final product data to save:", productData);
+    console.log("✅ Final Product Data:", productData);
 
-    // ✅ Save product
+    // 🧾 Validation: category required
+    if (!productData.category) {
+      return res.status(400).json({ error: "Category is required" });
+    }
+
+    // 💾 Save Product
     const newProduct = new Product(productData);
-    console.log("📝 New product instance created");
-
     const savedProduct = await newProduct.save();
-    console.log("✅ Product saved successfully:", savedProduct._id);
 
+    console.log("✅ Product Saved:", savedProduct._id);
     res.status(201).json({
       message: "Product uploaded successfully",
       product: savedProduct,
     });
-
   } catch (error) {
     console.error("❌ PRODUCT CREATION ERROR:", error);
-    console.error("❌ Error name:", error.name);
-    console.error("❌ Error message:", error.message);
-    console.error("❌ Error stack:", error.stack);
 
-    if (error.name === 'ValidationError') {
-      console.log("🔍 Validation errors:", error.errors);
+    if (error.name === "ValidationError") {
       return res.status(400).json({
         error: "Validation Error",
-        details: Object.values(error.errors).map(err => err.message)
+        details: Object.values(error.errors).map((e) => e.message),
       });
     }
 
     res.status(500).json({
       error: "Internal server error",
-      message: error.message
+      message: error.message,
     });
   }
 };
 
-
-// ✅ Get All Products
-
-
-// Get products uploaded by current user
+// 🟢 Get products uploaded by current user
 export const getMyProducts = async (req, res) => {
   try {
-    console.log("User from token:", req.user); // 🧩 check this
     if (!req.user || !req.user._id) {
       return res.status(401).json({ error: "Unauthorized: No user found" });
     }
@@ -155,12 +148,12 @@ export const getMyProducts = async (req, res) => {
     const products = await Product.find({ uploadedBy: req.user._id });
     res.status(200).json(products);
   } catch (err) {
-    console.error("❌ My Products fetch error:", err);
+    console.error("❌ getMyProducts Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
-// Add order to product (this will be called when someone orders a product)
+// 🟢 Add product order
 export const addProductOrder = async (req, res) => {
   try {
     const { productId } = req.params;
@@ -173,9 +166,9 @@ export const addProductOrder = async (req, res) => {
           orders: {
             user: req.user._id,
             quantity: quantity,
-            status: "pending"
-          }
-        }
+            status: "pending",
+          },
+        },
       },
       { new: true }
     ).populate("orders.user", "name email");
@@ -185,19 +178,16 @@ export const addProductOrder = async (req, res) => {
     }
 
     res.status(200).json({
-      message: "Order added to product",
-      product: updatedProduct
+      message: "Order added successfully",
+      product: updatedProduct,
     });
   } catch (err) {
+    console.error("❌ addProductOrder Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
-
-
-
-
-//  Update product
+// 🟢 Update product
 export const updateProduct = async (req, res) => {
   try {
     const updatedProduct = await Product.findByIdAndUpdate(
@@ -208,22 +198,24 @@ export const updateProduct = async (req, res) => {
     if (!updatedProduct) return res.status(404).json({ error: "Product not found" });
     res.status(200).json(updatedProduct);
   } catch (err) {
+    console.error("❌ updateProduct Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
-//  Delete product
+// 🟢 Delete product
 export const deleteProduct = async (req, res) => {
   try {
     const deletedProduct = await Product.findByIdAndDelete(req.params.id);
     if (!deletedProduct) return res.status(404).json({ error: "Product not found" });
     res.status(200).json({ message: "Product deleted successfully" });
   } catch (err) {
+    console.error("❌ deleteProduct Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
-//  Get products by tag
+// 🟢 Get products by tag
 export const getProductsByTag = async (req, res) => {
   try {
     const { tag } = req.params;
@@ -235,11 +227,12 @@ export const getProductsByTag = async (req, res) => {
 
     res.status(200).json(products);
   } catch (err) {
+    console.error("❌ getProductsByTag Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
-// Get most popular products (based on clicks)
+// 🟢 Get popular products
 export const getPopularProducts = async (req, res) => {
   try {
     const products = await Product.find()
@@ -250,7 +243,7 @@ export const getPopularProducts = async (req, res) => {
 
     res.status(200).json(products);
   } catch (err) {
-    console.error("Popular Products Error:", err);
+    console.error("❌ getPopularProducts Error:", err);
     res.status(500).json({ error: "Server failed. Check DB and category references." });
   }
 };
