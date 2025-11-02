@@ -56,67 +56,80 @@ export const getProductById = async (req, res) => {
 // Create new product - Add uploadedBy field
 export const createProduct = async (req, res) => {
   try {
+    console.log("🔄 Starting product creation...");
+    
+    // Check if user is authenticated
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
     let imageUrls = [];
 
-    // Agar files upload hui ho
-imageUrls = req.files.map(f => f.path || f.secure_url || f.url);
-  
-    // Agar body me images array ho aur files na ho
-  
-  
-    // Function to parse JSON and handle $oid
-    const parseIfJson = (data) => {
+    // Handle file uploads safely
+    if (req.files && req.files.length > 0) {
+      imageUrls = req.files.map(file => file.path || file.secure_url);
+      console.log("✅ Uploaded images:", imageUrls);
+    } else {
+      console.log("⚠️ No images uploaded");
+    }
+
+    // Parse JSON fields safely
+    const parseField = (field) => {
+      if (!field) return field;
       try {
-        const parsed = typeof data === "string" ? JSON.parse(data) : data;
-
-        // Agar ObjectId format ho { $oid: "..." }
-        if (parsed && typeof parsed === "object" && parsed.$oid) return parsed.$oid;
-
-        // Agar array ho to recursively parse
-        if (Array.isArray(parsed)) return parsed.map(item => parseIfJson(item));
-
-        // Agar object ho to recursively parse each key
-        if (parsed && typeof parsed === "object") {
-          const newObj = {};
-          for (const key in parsed) {
-            newObj[key] = parseIfJson(parsed[key]);
-          }
-          return newObj;
-        }
-
-        return parsed;
-      } catch {
-        return data;
+        return typeof field === 'string' ? JSON.parse(field) : field;
+      } catch (error) {
+        console.log(`❌ Failed to parse ${field}, keeping as string`);
+        return field;
       }
     };
 
-    // Parse all nested JSON fields
-    const parsedBody = {
+    // Prepare product data
+    const productData = {
       ...req.body,
-      category: parseIfJson(req.body.category),
-      nutritionalInfo: parseIfJson(req.body.nutritionalInfo),
-      shipping: parseIfJson(req.body.shipping),
-      lifestyle: parseIfJson(req.body.lifestyle),
-      features: parseIfJson(req.body.features),
-      tags: parseIfJson(req.body.tags),
+      category: parseField(req.body.category),
+      nutritionalInfo: parseField(req.body.nutritionalInfo),
+      shipping: parseField(req.body.shipping),
+      lifestyle: parseField(req.body.lifestyle) || [],
+      features: parseField(req.body.features),
+      tags: parseField(req.body.tags) || [],
+      images: imageUrls,
+      uploadedBy: req.user._id,
+      
+      // Ensure required fields have defaults
+      price: parseFloat(req.body.price) || 0,
+      quantity: parseInt(req.body.quantity) || 1,
+      clicks: 0
     };
 
-    // Create new product with uploadedBy field
-    const newProduct = new Product({
-      ...parsedBody,
-      images: imageUrls,
-      uploadedBy: req.user._id // Add the user who uploaded the product
-    });
+    console.log("📋 Final product data:", productData);
 
+    // Create and save product
+    const newProduct = new Product(productData);
     const savedProduct = await newProduct.save();
+
+    console.log("✅ Product saved successfully:", savedProduct._id);
 
     res.status(201).json({
       message: "Product uploaded successfully",
       product: savedProduct,
     });
+
   } catch (error) {
-    console.error("❌ Error creating products:", error);
-    res.status(500).json({ message: "Error creating products", error });
+    console.error("❌ Product creation error:", error);
+    
+    // More specific error responses
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ 
+        error: "Validation Error", 
+        details: error.errors 
+      });
+    }
+    
+    res.status(500).json({ 
+      error: "Internal server error",
+      message: error.message 
+    });
   }
 };
 
