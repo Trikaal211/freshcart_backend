@@ -4,7 +4,8 @@ const wishlistSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
-    required: true
+    required: true,
+    index: true   // yahan pe index lagana chaho to yahi kaafi hai
   },
   products: [{
     productId: {
@@ -19,8 +20,7 @@ const wishlistSchema = new mongoose.Schema({
   }]
 }, { timestamps: true });
 
-//faster queries
-wishlistSchema.index({ userId: 1 });
+
 
 const Wishlist = mongoose.model("Wishlist", wishlistSchema);
 export default Wishlist;

@@ -5,7 +5,7 @@ const cartSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true,
-    unique: true
+    unique: true   // automatically indexed
   },
   products: [{
     productId: {
@@ -32,8 +32,8 @@ const cartSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Add index for better performance
-cartSchema.index({ userId: 1 });
+// ❌ Remove this line ↓
+// cartSchema.index({ userId: 1 });
 
 const Cart = mongoose.model("Cart", cartSchema);
 export default Cart;
