@@ -60,8 +60,8 @@ export const createProduct = async (req, res) => {
     console.log("📧 User:", req.user);
     console.log("📦 Request Body:", req.body);
     console.log("📸 Files:", req.files);
-    
-    // Check authentication
+
+    // ✅ Check authentication
     if (!req.user || !req.user._id) {
       console.log("❌ No user found");
       return res.status(401).json({ error: "User not authenticated" });
@@ -69,7 +69,7 @@ export const createProduct = async (req, res) => {
 
     let imageUrls = [];
 
-    // Handle file uploads
+    // ✅ Handle file uploads (via Multer + Cloudinary)
     if (req.files && req.files.length > 0) {
       console.log("✅ Files received:", req.files.length);
       imageUrls = req.files.map(file => {
@@ -84,7 +84,7 @@ export const createProduct = async (req, res) => {
       console.log("⚠️ No files uploaded");
     }
 
-    // Simple parsing - avoid complex JSON parsing for now
+    // ✅ Product Data
     const productData = {
       title: req.body.title,
       slug: req.body.slug,
@@ -97,8 +97,8 @@ export const createProduct = async (req, res) => {
       availability: req.body.availability || "In Stock",
       images: imageUrls,
       uploadedBy: req.user._id,
-      
-      // Optional fields with simple handling
+
+      // Optional fields
       subtitle: req.body.subtitle || "",
       weight: req.body.weight || "N/A",
       lifestyle: req.body.lifestyle ? JSON.parse(req.body.lifestyle) : [],
@@ -107,10 +107,10 @@ export const createProduct = async (req, res) => {
 
     console.log("🎯 Final product data to save:", productData);
 
-    // Create and save product
+    // ✅ Save product
     const newProduct = new Product(productData);
     console.log("📝 New product instance created");
-    
+
     const savedProduct = await newProduct.save();
     console.log("✅ Product saved successfully:", savedProduct._id);
 
@@ -124,21 +124,25 @@ export const createProduct = async (req, res) => {
     console.error("❌ Error name:", error.name);
     console.error("❌ Error message:", error.message);
     console.error("❌ Error stack:", error.stack);
-    
+
     if (error.name === 'ValidationError') {
       console.log("🔍 Validation errors:", error.errors);
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: "Validation Error",
         details: Object.values(error.errors).map(err => err.message)
       });
     }
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       error: "Internal server error",
-      message: error.message 
+      message: error.message
     });
   }
 };
+
+
+// ✅ Get All Products
+
 
 // Get products uploaded by current user
 export const getMyProducts = async (req, res) => {
