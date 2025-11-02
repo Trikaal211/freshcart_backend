@@ -42,8 +42,8 @@ productRouter.get("/:id", getProductById);
 // ✅ Now uploads go to Cloudinary instead of local folder
 productRouter.post
 
-("/",console.log("start"), authMiddleware, upload.array("images", 5), (req, res, next) => {
-  console.log("📸 Uploaded files:", req.files);
+("/", authMiddleware, upload.array("images", 5), (req, res, next) => {
+  console.log("📸 Uploaded filsjcjjes:");
   console.log("📦 Request body:", req.body);
   next();
 }, createProduct);
