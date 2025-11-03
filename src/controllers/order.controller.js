@@ -58,16 +58,37 @@ export const createOrder = async (req, res) => {
     }
 
     // Create order
-    const order = new Order({
-      user: userId,
-      items: orderItems,
-      totalAmount,
-      address,
-      status: "pending",
-      paymentStatus: "pending"
-    });
+ // Create order
+const order = new Order({
+  user: userId,
+  items: orderItems,
+  totalAmount,
+  address,
+  status: "pending",
+  paymentStatus: "pending"
+});
 
-    const savedOrder = await order.save();
+const savedOrder = await order.save();
+
+// ✅ यह नया हिस्सा जोड़ो (हर product.orders में orderId भी डालेंगे)
+for (const item of items) {
+  await Product.findByIdAndUpdate(
+    item.productId,
+    {
+      $push: {
+        orders: {
+          user: userId,
+          quantity: item.quantity,
+          orderDate: new Date(),
+          status: "pending",
+          orderPrice: item.price,
+          orderId: savedOrder._id   // 🟢 यह नई लाइन डालो
+        }
+      }
+    }
+  );
+}
+
 
     res.status(201).json({
       message: "Order created successfully",
