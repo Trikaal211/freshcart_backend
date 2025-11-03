@@ -3,17 +3,18 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-console.log("Cloudinary Config Check:", {
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? "✓ Set" : "✗ Missing",
-  api_key: process.env.CLOUDINARY_API_KEY ? "✓ Set" : "✗ Missing",
-  // Don't log api_secret for security
-});         
-
+// Cloudinary configuration
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
-console.log("ahaa")
+
+// Optional: small confirmation log (for debugging only)
+console.log("✅ Cloudinary Connected:", {
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY ? "✓ Present" : "✗ Missing",
+  api_secret: process.env.CLOUDINARY_API_SECRET ? "✓ Present" : "✗ Missing",
+});
 
 export default cloudinary;
