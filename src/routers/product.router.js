@@ -12,7 +12,7 @@ import {
   addProductOrder
 } from "../controllers/product.controller.js";
 import { authMiddleware } from "../../middlewares/user.middleware.js";  
-import upload from "../../config/multer.js";
+import {upload} from "../../config/multer.js";
 
 
 
