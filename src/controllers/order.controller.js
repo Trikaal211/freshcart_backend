@@ -130,34 +130,43 @@ export const getAllOrders = async (req, res) => {
 // Update order statu
 
 // Add this to your order.controller.js
-export const updateOrderStatus = async (req, res) => {
+// Add this to your product.controller.js
+export const updateProductOrderStatus = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { productId, orderId } = req.params;
     const { status } = req.body;
 
-    // Validate status
-    const validStatuses = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ error: "Invalid status" });
+    console.log("🔄 Updating product order:", { productId, orderId, status });
+
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
     }
 
-    const updatedOrder = await Order.findByIdAndUpdate(
-      id,
-      { status },
-      { new: true }
-    ).populate("user", "name email").populate("items.product", "title images");
-
-    if (!updatedOrder) {
-      return res.status(404).json({ error: "Order not found" });
+    // Find the specific order in the product's orders array
+    const order = product.orders.id(orderId);
+    if (!order) {
+      return res.status(404).json({ error: "Order not found in product" });
     }
+
+    // Update order status
+    order.status = status;
+    order.updatedAt = new Date();
+    
+    await product.save();
+
+    console.log("✅ Product order status updated successfully");
 
     res.status(200).json({
       message: "Order status updated successfully",
-      order: updatedOrder,
+      order: order,
+      product: {
+        _id: product._id,
+        title: product.title
+      }
     });
   } catch (err) {
-    console.error("❌ updateOrderStatus Error:", err);
+    console.error("❌ updateProductOrderStatus Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
-
