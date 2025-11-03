@@ -129,59 +129,35 @@ export const getAllOrders = async (req, res) => {
 
 // Update order statu
 
+// Add this to your order.controller.js
 export const updateOrderStatus = async (req, res) => {
   try {
-    const orderId = req.params.id;
+    const { id } = req.params;
     const { status } = req.body;
 
-    // 🔹 Validate status
+    // Validate status
     const validStatuses = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
     if (!validStatuses.includes(status)) {
-      return res.status(400).json({ message: "Invalid status value" });
+      return res.status(400).json({ error: "Invalid status" });
     }
 
-    // 🔹 Find order and populate product uploader
-    const order = await Order.findById(orderId).populate("items.product", "uploadedBy title");
+    const updatedOrder = await Order.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true }
+    ).populate("user", "name email").populate("items.product", "title images");
 
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
+    if (!updatedOrder) {
+      return res.status(404).json({ error: "Order not found" });
     }
 
-    // 🔹 Check if logged-in user is seller of any product in this order
-    const isSeller = order.items.some(
-      (item) => item.product?.uploadedBy?.toString() === req.user._id.toString()
-    );
-
-    if (!isSeller) {
-      return res.status(403).json({ message: "You are not authorized to update this order" });
-    }
-
-    // 🔹 Update main order status
-    order.status = status;
-    await order.save();
-
-    // 🔹 Update embedded order status in product(s) for this buyer
-    await Product.updateMany(
-      {
-        uploadedBy: req.user._id,       // Only seller’s products
-        "orders.user": order.user,      // For the same buyer
-      },
-      {
-        $set: { "orders.$[elem].status": status },
-      },
-      {
-        arrayFilters: [{ "elem.user": order.user }],
-      }
-    );
-
-    return res.status(200).json({
-      message: `Order status updated to '${status}' successfully`,
-      order,
+    res.status(200).json({
+      message: "Order status updated successfully",
+      order: updatedOrder,
     });
-
   } catch (err) {
-    console.error("❌ Error updating order status:", err);
-    res.status(500).json({ message: err.message });
+    console.error("❌ updateOrderStatus Error:", err);
+    res.status(500).json({ error: err.message });
   }
 };
 

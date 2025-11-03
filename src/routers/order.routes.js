@@ -1,9 +1,10 @@
+// In your order router
 import express from "express";
 import {
   createOrder,
   getUserOrders,
   getAllOrders,
-  updateOrderStatus
+  updateOrderStatus  // Make sure this is imported
 } from "../controllers/order.controller.js";
 import { authMiddleware } from "../../middlewares/user.middleware.js";
 
@@ -12,6 +13,6 @@ const orderRouter = express.Router();
 orderRouter.post("/", authMiddleware, createOrder);
 orderRouter.get("/my-orders", authMiddleware, getUserOrders);
 orderRouter.get("/", authMiddleware, getAllOrders);
-orderRouter.patch("/update-status/:id", authMiddleware, updateOrderStatus);
+orderRouter.patch("/:id/status", authMiddleware, updateOrderStatus); // Fixed route
 
 export default orderRouter;
