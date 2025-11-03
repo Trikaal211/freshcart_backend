@@ -25,7 +25,7 @@ productRouter.get("/lifestyle/:type", getProductsByLifestyle);
 productRouter.get("/tag/:tag", getProductsByTag);
 productRouter.get("/my-products", authMiddleware, getMyProducts);
 productRouter.get("/:id", getProductById);
-
+console.log("hlw");
 // Now uploads go to Cloudinary instead of local folder
 productRouter.post
 
