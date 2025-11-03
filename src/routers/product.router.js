@@ -30,8 +30,8 @@ productRouter.get("/:id", getProductById);
 productRouter.post
 
 ("/", authMiddleware, upload.array("images", 5), (req, res, next) => {
-  // console.log("📸 Uploaded filsjcjjes:");
-  // console.log("📦 Request body:", req.body);
+  console.log("📸 Uploaded filsjcjjes:");
+  console.log("📦 Request body:", req.body);
   next();
 }, createProduct);
 productRouter.post("/:productId/order", authMiddleware, addProductOrder);
