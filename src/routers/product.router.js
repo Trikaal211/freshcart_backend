@@ -9,14 +9,12 @@ import {
   getProductsByTag,
   getPopularProducts,
   getMyProducts,
-  addProductOrder
+  addProductOrder,
+  updateProductOrderStatus  // ✅ Add this import
 } from "../controllers/product.controller.js";
 import { authMiddleware } from "../../middlewares/user.middleware.js";  
 import {upload} from "../../config/multer.js";
 
-
-
-// Router
 const productRouter = express.Router();
 
 productRouter.get("/", getProducts);
@@ -25,9 +23,6 @@ productRouter.get("/lifestyle/:type", getProductsByLifestyle);
 productRouter.get("/tag/:tag", getProductsByTag);
 productRouter.get("/my-products", authMiddleware, getMyProducts);
 productRouter.get("/:id", getProductById);
-
-// Now uploads go to Cloudinary instead of local folder
-productRouter.post
 
 productRouter.post(
   "/",
@@ -43,7 +38,9 @@ productRouter.post(
   },
   createProduct
 );
+
 productRouter.post("/:productId/order", authMiddleware, addProductOrder);
+productRouter.patch("/:productId/orders/:orderId/status", authMiddleware, updateProductOrderStatus); // ✅ Add this route
 productRouter.put("/:id", updateProduct);
 productRouter.delete("/:id", deleteProduct);
 
