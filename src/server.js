@@ -36,7 +36,10 @@ app.use(express.json());
 // ✅ (2) Routes
 app.use("/recipes", reciperouter);
 app.use("/books", bookrouter);
-app.use("/orders", orderRouter);
+app.use("/orders", (req, res, next) => {
+  console.log("🟢 /orders route hit:", req.method, req.url);
+  next();
+}, orderRouter);
 app.use("/cart", cartrouter);
 app.use("/wishlist", wishlistRouter);
 app.use("/", router);
