@@ -12,6 +12,6 @@ const orderRouter = express.Router();
 orderRouter.post("/", authMiddleware, createOrder);
 orderRouter.get("/my-orders", authMiddleware, getUserOrders);
 orderRouter.get("/", authMiddleware, getAllOrders); // Admin only
-orderRouter.patch("/update-status/:orderId", authMiddleware, updateOrderStatus);
+orderRouter.patch("/update-status/:id", authMiddleware, updateOrderStatus);
 
 export default orderRouter;

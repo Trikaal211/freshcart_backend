@@ -110,22 +110,19 @@ export const getAllOrders = async (req, res) => {
 
 export const updateOrderStatus = async (req, res) => {
   try {
-    const { orderId } = req.params;
+    const orderId = req.params.id; // ✅ fixed param name
     const { status } = req.body;
 
-    // ✅ Valid status check
     if (!["pending", "shipped", "delivered"].includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
     }
 
-    // ✅ Find order with populated product info
     const order = await Order.findById(orderId).populate("items.product", "uploadedBy");
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    // ✅ Check if current user is seller of *any* item in this order
     const isSeller = order.items.some(
       (item) => item.product?.uploadedBy?.toString() === req.user._id.toString()
     );
@@ -134,9 +131,15 @@ export const updateOrderStatus = async (req, res) => {
       return res.status(403).json({ message: "Not authorized to update this order" });
     }
 
-    // ✅ Update status
     order.status = status;
     await order.save();
+
+    // ✅ Also update product's embedded orders (for seller UI sync)
+    await Product.updateMany(
+      { "orders.user": order.user },
+      { $set: { "orders.$[elem].status": status } },
+      { arrayFilters: [{ "elem.user": order.user }] }
+    );
 
     res.status(200).json({ message: "Order status updated", order });
   } catch (err) {
@@ -144,3 +147,4 @@ export const updateOrderStatus = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+

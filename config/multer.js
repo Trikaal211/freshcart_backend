@@ -6,7 +6,7 @@ const storage = new CloudinaryStorage({
   cloudinary,
   params: {
     folder: "products",
-    format: async (req, file) => file.mimetype.split("/")[1], // auto detect format
+    format: async (req, file) => file.mimetype.split("/")[1], 
     public_id: (req, file) => file.fieldname + "_" + Date.now(),
     resource_type: "auto",
   },
