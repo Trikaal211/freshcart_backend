@@ -110,7 +110,7 @@ export const getAllOrders = async (req, res) => {
 
 export const updateOrderStatus = async (req, res) => {
   try {
-    const orderId = req.params.id; // ✅ fixed param name
+    const orderId = req.params.id; //  fixed param name
     const { status } = req.body;
 
     if (!["pending", "shipped", "delivered"].includes(status)) {
