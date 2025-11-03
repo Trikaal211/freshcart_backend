@@ -8,11 +8,15 @@ const storage = new CloudinaryStorage({
   cloudinary,
   params: async (req, file) => {
     console.log("📸 File details inside multer:", file.originalname);
-    return {
-      folder: "products",
-      allowed_formats: ["jpg", "jpeg", "png", "webp"], // ✅ added webp
-      transformation: [{ width: 800, height: 800, crop: "limit" }],
-    };
+  return {
+  folder: "products",
+  allowed_formats: ["jpg", "jpeg", "png", "webp"],
+  transformation: [{ width: 800, height: 800, crop: "limit" }],
+  use_filename: true,
+  unique_filename: false,
+  resource_type: "auto"
+};
+
   },
 });
 
