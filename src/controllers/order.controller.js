@@ -106,44 +106,60 @@ export const getAllOrders = async (req, res) => {
   }
 };
 
-// Update order status
+// Update order statu
 
 export const updateOrderStatus = async (req, res) => {
   try {
-    const orderId = req.params.id; //  fixed param name
+    const orderId = req.params.id;
     const { status } = req.body;
 
-    if (!["pending", "shipped", "delivered"].includes(status)) {
-      return res.status(400).json({ message: "Invalid status" });
+    // 🔹 Validate status
+    const validStatuses = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid status value" });
     }
 
-    const order = await Order.findById(orderId).populate("items.product", "uploadedBy");
+    // 🔹 Find order and populate product uploader
+    const order = await Order.findById(orderId).populate("items.product", "uploadedBy title");
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
 
+    // 🔹 Check if logged-in user is seller of any product in this order
     const isSeller = order.items.some(
       (item) => item.product?.uploadedBy?.toString() === req.user._id.toString()
     );
 
     if (!isSeller) {
-      return res.status(403).json({ message: "Not authorized to update this order" });
+      return res.status(403).json({ message: "You are not authorized to update this order" });
     }
 
+    // 🔹 Update main order status
     order.status = status;
     await order.save();
 
-    // ✅ Also update product's embedded orders (for seller UI sync)
+    // 🔹 Update embedded order status in product(s) for this buyer
     await Product.updateMany(
-      { "orders.user": order.user },
-      { $set: { "orders.$[elem].status": status } },
-      { arrayFilters: [{ "elem.user": order.user }] }
+      {
+        uploadedBy: req.user._id,       // Only seller’s products
+        "orders.user": order.user,      // For the same buyer
+      },
+      {
+        $set: { "orders.$[elem].status": status },
+      },
+      {
+        arrayFilters: [{ "elem.user": order.user }],
+      }
     );
 
-    res.status(200).json({ message: "Order status updated", order });
+    return res.status(200).json({
+      message: `Order status updated to '${status}' successfully`,
+      order,
+    });
+
   } catch (err) {
-    console.error("❌ Update order status error:", err);
+    console.error("❌ Error updating order status:", err);
     res.status(500).json({ message: err.message });
   }
 };
