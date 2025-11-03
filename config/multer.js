@@ -10,7 +10,7 @@ const storage = new CloudinaryStorage({
     console.log("📸 File details inside multer:", file.originalname);
     return {
       folder: "products",
-      allowed_formats: ["jpg", "jpeg", "png"],
+      allowed_formats: ["jpg", "jpeg", "png", "webp"], // ✅ added webp
       transformation: [{ width: 800, height: 800, crop: "limit" }],
     };
   },
