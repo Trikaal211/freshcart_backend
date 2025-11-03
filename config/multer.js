@@ -10,7 +10,7 @@ const storage = new CloudinaryStorage({
     transformation: [{ width: 800, height: 800, crop: "limit" }],
   },
 });
-
+console.log("heyheyeyey")
 const upload = multer({ storage });
 
 export { upload };
