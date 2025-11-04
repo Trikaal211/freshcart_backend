@@ -10,7 +10,7 @@ import {
   getPopularProducts,
   getMyProducts,
   addProductOrder,
-  updateProductOrderStatus  // ✅ Add this import
+  updateProductOrderStatus  //  Add this import
 } from "../controllers/product.controller.js";
 import { authMiddleware } from "../../middlewares/user.middleware.js";  
 import {upload} from "../../config/multer.js";
@@ -28,12 +28,12 @@ productRouter.post(
   "/",
   authMiddleware,
   (req, res, next) => {
-    console.log("🟡 Before multer");
+    console.log("Before multer");
     next();
   },
   upload.array("images", 5),
   (req, res, next) => {
-    console.log("🟢 After multer, before createProduct");
+    console.log("After multer, before createProduct");
     next();
   },
   createProduct
