@@ -164,7 +164,7 @@ export const updateProductOrderStatus = async (req, res) => {
     }
 
     // Find the specific order in the product's orders array
-    const order = product.orders.id(orderId);
+await Product.findByIdAndUpdate(productId, { orderStatus: "ordered" });
     if (!order) {
       return res.status(404).json({ error: "Order not found in this product" });
     }
