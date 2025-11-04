@@ -28,12 +28,12 @@ productRouter.post(
   "/",
   authMiddleware,
   (req, res, next) => {
-    console.log(" Before multer");
+    console.log("Before multer");
     next();
   },
   upload.array("images", 5),
   (req, res, next) => {
-    console.log(" After multer, before createProduct");
+    console.log("After multer, before createProduct");
     next();
   },
   createProduct
