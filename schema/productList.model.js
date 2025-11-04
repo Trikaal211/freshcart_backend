@@ -171,62 +171,62 @@ const productSchema = new mongoose.Schema(
     },
 
     // 🟢 FIXED: orders array with proper fields
-    orders: [
-      {
-        user: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
-        },
-        quantity: {
-          type: Number,
-          default: 1,
-        },
-        orderDate: {
-          type: Date,
-          default: Date.now,
-        },
-        status: {
-          type: String,
-          enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],
-          default: "pending",
-        },
-        orderPrice: {
-          type: Number,
-        },
-        // ✅ ADDED: This field was missing
-        orderId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "Order",
-          required: true
-        },
-        // ✅ ADDED: Buyer information fields
-        buyerName: {
-          type: String,
-          default: ""
-        },
-        buyerEmail: {
-          type: String,
-          default: ""
-        },
-        address: {
-          type: String,
-          default: ""
-        },
-        phone: {
-          type: String,
-          default: ""
-        },
-        deliveryTime: {
-          type: String,
-          default: ""
-        },
-        updatedAt: {
-          type: Date,
-          default: Date.now
-        }
-      },
-    ],
+  // In product schema, make sure orders array has this structure:
+  orders: [
+  {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    quantity: {
+      type: Number,
+      default: 1,
+    },
+    orderDate: {
+      type: Date,
+      default: Date.now,
+    },
+    status: {
+      type: String,
+      enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],
+      default: "pending",
+    },
+    orderPrice: {
+      type: Number,
+    },
+    // ✅ THIS FIELD MUST EXIST AND BE REQUIRED
+    orderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Order",
+      required: true
+    },
+    buyerName: {
+      type: String,
+      default: ""
+    },
+    buyerEmail: {
+      type: String,
+      default: ""
+    },
+    address: {
+      type: String,
+      default: ""
+    },
+    phone: {
+      type: String,
+      default: ""
+    },
+    deliveryTime: {
+      type: String,
+      default: ""
+    },
+    updatedAt: {
+      type: Date,
+      default: Date.now
+    }
   },
+],
+},
   {
     timestamps: true,
     versionKey: false,

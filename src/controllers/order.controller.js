@@ -1,11 +1,15 @@
 import Order from "../../schema/order.model.js";
 import Product from "../../schema/productList.model.js";
 
-// Create new order - FIXED VERSION
+// Create new order - COMPLETELY FIXED VERSION
 export const createOrder = async (req, res) => {
   try {
     const { address, items, phone, deliveryTime, paymentMethod, orderNote } = req.body;
     const userId = req.user._id;
+
+    console.log("🚀 Starting order creation...");
+    console.log("📦 Items:", items);
+    console.log("👤 User:", req.user);
 
     let totalAmount = 0;
     const orderItems = [];
@@ -56,36 +60,63 @@ export const createOrder = async (req, res) => {
     });
 
     const savedOrder = await order.save();
+    console.log("✅ Main order created:", savedOrder._id);
 
-    // ✅ FIXED: Add order to each product's orders array
+    // ✅ FIXED: Add order to each product's orders array WITH PROPER DATA
     for (const item of items) {
       const product = await Product.findById(item.productId);
       if (product) {
+        // ✅ FIXED: Use the correct price and ensure all fields are included
         const orderData = {
           user: userId,
           quantity: item.quantity,
           orderDate: new Date(),
           status: "pending",
           orderPrice: item.price || product.price,
-          orderId: savedOrder._id,
+          orderId: savedOrder._id, // ✅ This is the main fix
           buyerName: `${req.user.firstName} ${req.user.lastName}`,
           buyerEmail: req.user.email,
           address: address,
           phone: phone || "",
-          deliveryTime: deliveryTime || ""
+          deliveryTime: deliveryTime || "",
+          updatedAt: new Date()
         };
 
         console.log("🟢 Adding order to product:", {
           productId: item.productId,
-          orderId: savedOrder._id
+          productTitle: product.title,
+          orderId: savedOrder._id,
+          orderData: orderData
         });
 
-        await Product.findByIdAndUpdate(
+        // ✅ FIXED: Use findByIdAndUpdate with proper options
+        const updatedProduct = await Product.findByIdAndUpdate(
           item.productId,
           {
-            $push: { orders: orderData }
+            $push: { 
+              orders: orderData 
+            }
+          },
+          { 
+            new: true,
+            runValidators: true 
           }
         );
+
+        if (updatedProduct) {
+          console.log("✅ Order added to product successfully");
+          console.log("📊 Product orders count:", updatedProduct.orders.length);
+          
+          // Verify the last order was added correctly
+          const lastOrder = updatedProduct.orders[updatedProduct.orders.length - 1];
+          console.log("🔍 Last order in product:", {
+            orderId: lastOrder.orderId,
+            buyerName: lastOrder.buyerName,
+            status: lastOrder.status
+          });
+        } else {
+          console.log("❌ Failed to update product");
+        }
       }
     }
 
