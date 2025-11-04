@@ -207,7 +207,9 @@ export const getMyProducts = async (req, res) => {
 export const addProductOrder = async (req, res) => {
   try {
     const { productId } = req.params;
-    const { quantity = 1 } = req.body;
+    const { quantity = 1, orderPrice, orderId, buyerName, buyerEmail, phone, address } = req.body;
+
+    if (!productId) return res.status(400).json({ error: "Product ID required" });
 
     const updatedProduct = await Product.findByIdAndUpdate(
       productId,
@@ -215,7 +217,13 @@ export const addProductOrder = async (req, res) => {
         $push: {
           orders: {
             user: req.user._id,
-            quantity: quantity,
+            quantity,
+            orderPrice,
+            orderId,
+            buyerName,
+            buyerEmail,
+            phone,
+            address,
             status: "pending",
           },
         },
@@ -228,11 +236,11 @@ export const addProductOrder = async (req, res) => {
     }
 
     res.status(200).json({
-      message: "Order added successfully",
+      message: "✅ Order added successfully",
       product: updatedProduct,
     });
   } catch (err) {
-    console.error(" addProductOrder Error:", err);
+    console.error("❌ addProductOrder Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
