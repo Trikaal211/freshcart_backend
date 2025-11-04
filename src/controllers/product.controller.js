@@ -195,7 +195,7 @@ export const getMyProducts = async (req, res) => {
       return res.status(401).json({ error: "Unauthorized: No user found" });
     }
 
-await Product.findByIdAndUpdate(productId, { orderStatus: "ordered" });
+    const products = await Product.find({ uploadedBy: req.user._id });
     res.status(200).json(products);
   } catch (err) {
     console.error(" getMyProducts Error:", err);
