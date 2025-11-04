@@ -143,7 +143,6 @@ export const createProduct = async (req, res) => {
 };
 
 // Update product order status - FIXED VERSION
-// Update product order status - FIXED VERSION
 export const updateProductOrderStatus = async (req, res) => {
   try {
     const { productId, orderId } = req.params;
