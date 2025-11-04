@@ -62,17 +62,18 @@ export const createOrder = async (req, res) => {
     const savedOrder = await order.save();
     console.log("✅ Main order created with ID:", savedOrder._id);
 
-    // ✅ FIXED: Add order to each product's orders array
+    // ✅ FIXED: Add order to each product's orders array - ULTRA DEBUGGING
     for (const item of items) {
       const product = await Product.findById(item.productId);
       if (product) {
+        // ✅ FIXED: Create order data with ALL fields
         const orderData = {
           user: userId,
           quantity: item.quantity,
           orderDate: new Date(),
           status: "pending",
           orderPrice: item.price || product.price,
-          orderId: savedOrder._id,
+          orderId: savedOrder._id, // ✅ THIS IS THE KEY FIX
           buyerName: `${req.user.firstName} ${req.user.lastName}`,
           buyerEmail: req.user.email,
           address: address,
@@ -81,27 +82,46 @@ export const createOrder = async (req, res) => {
           updatedAt: new Date()
         };
 
-        console.log("🟢 Adding order to product:", {
+        console.log("🟢🟢🟢 ADDING ORDER TO PRODUCT:", {
           productId: item.productId,
           productTitle: product.title,
           orderId: savedOrder._id,
-          status: "pending"
+          orderData: orderData
         });
 
-        // Add order to product
-        await Product.findByIdAndUpdate(
-          item.productId,
-          {
-            $push: { 
-              orders: orderData 
+        try {
+          // ✅ FIXED: Use findOneAndUpdate to see the actual result
+          const updatedProduct = await Product.findOneAndUpdate(
+            { _id: item.productId },
+            { 
+              $push: { 
+                orders: orderData 
+              } 
+            },
+            { 
+              new: true,
+              runValidators: true 
             }
-          },
-          { 
-            new: true
-          }
-        );
+          );
 
-        console.log("✅ Order added to product successfully");
+          if (updatedProduct) {
+            console.log("✅✅✅ SUCCESS: Order added to product");
+            console.log("📊 Product orders count:", updatedProduct.orders.length);
+            
+            // Check the last order that was added
+            const lastOrder = updatedProduct.orders[updatedProduct.orders.length - 1];
+            console.log("🔍 Last order details:", {
+              orderId: lastOrder.orderId,
+              hasOrderId: !!lastOrder.orderId,
+              buyerName: lastOrder.buyerName,
+              status: lastOrder.status
+            });
+          } else {
+            console.log("❌❌❌ FAILED: Could not update product");
+          }
+        } catch (updateError) {
+          console.error("❌❌❌ ERROR updating product:", updateError);
+        }
       }
     }
 
