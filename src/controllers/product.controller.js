@@ -1,6 +1,6 @@
 import Product from "../../schema/productList.model.js";
 
-//  Get all products
+// Get all products
 export const getProducts = async (req, res) => {
   try {
     let query = Product.find().populate("category", "name");
@@ -12,12 +12,12 @@ export const getProducts = async (req, res) => {
     const products = await query;
     res.status(200).json(products);
   } catch (err) {
-    console.error(" getProducts Error:", err);
+    console.error("❌ getProducts Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
-//  Get products by lifestyle
+// Get products by lifestyle
 export const getProductsByLifestyle = async (req, res) => {
   try {
     const { type } = req.params;
@@ -34,7 +34,7 @@ export const getProductsByLifestyle = async (req, res) => {
   }
 };
 
-//  Get product by ID (auto increment clicks)
+// Get product by ID
 export const getProductById = async (req, res) => {
   try {
     const product = await Product.findByIdAndUpdate(
@@ -47,40 +47,26 @@ export const getProductById = async (req, res) => {
 
     res.status(200).json(product);
   } catch (err) {
-    console.error(" getProductById Error:", err);
+    console.error("❌ getProductById Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
-//  Create new product
-
+// Create new product
 export const createProduct = async (req, res) => {
   try {
-    console.log("🖼 File details full:", JSON.stringify(req.files, null, 2));
-
-    console.log("CREATE PRODUCT API CALLED");
-    console.log(" User:", req.user);
-    console.log(" Body:", req.body);
-    console.log(" Files:", req.files);
-
-    //  Authentication Check
+    // Authentication Check
     if (!req.user || !req.user._id) {
       return res.status(401).json({ error: "Unauthorized: user not found" });
     }
 
-    // 🖼 Handle Images (Cloudinary)
+    // Handle Images
     let imageUrls = [];
     if (req.files && req.files.length > 0) {
-      imageUrls = req.files.map((file) => {
-        console.log(" File details:", file);
-        //  Cloudinary always provides 'path' and 'secure_url'
-        return file.path || file.secure_url || "";
-      }).filter(url => url !== "");
-    } else {
-      console.log(" No images uploaded");
+      imageUrls = req.files.map((file) => file.path || file.secure_url || "").filter(url => url !== "");
     }
 
-    //  Parse Lifestyle Array Safely
+    // Parse Lifestyle Array
     let lifestyleArray = [];
     if (req.body.lifestyle) {
       try {
@@ -92,7 +78,7 @@ export const createProduct = async (req, res) => {
       }
     }
 
-    //  Product Data
+    // Product Data
     const productData = {
       title: req.body.title?.trim() || "Untitled Product",
       slug: req.body.slug?.trim() || req.body.title?.trim().toLowerCase().replace(/\s+/g, "-"),
@@ -103,7 +89,7 @@ export const createProduct = async (req, res) => {
       quantity: Number(req.body.quantity) || 1,
       category: req.body.category || null,
       availability: req.body.availability || "In Stock",
-      images: imageUrls, 
+      images: imageUrls,
       uploadedBy: req.user._id,
       subtitle: req.body.subtitle || "",
       weight: req.body.weight || "N/A",
@@ -111,9 +97,7 @@ export const createProduct = async (req, res) => {
       tags: req.body.tags ? [req.body.tags] : [],
     };
 
-    console.log("✅ Final Product Data:", productData);
-
-    //  Validation
+    // Validation
     if (!productData.category) {
       return res.status(400).json({ error: "Category is required" });
     }
@@ -122,13 +106,12 @@ export const createProduct = async (req, res) => {
     const newProduct = new Product(productData);
     const savedProduct = await newProduct.save();
 
-    console.log(" Product Saved:", savedProduct._id);
     res.status(201).json({
       message: "Product uploaded successfully",
       product: savedProduct,
     });
   } catch (error) {
-    console.error(" PRODUCT CREATION ERROR:", error);
+    console.error("❌ PRODUCT CREATION ERROR:", error);
 
     if (error.name === "ValidationError") {
       return res.status(400).json({
@@ -143,41 +126,38 @@ export const createProduct = async (req, res) => {
     });
   }
 };
-//  Update product order status
-// ✅ Update product order status (Fixed)
+
+// Update product order status in product's orders array
 export const updateProductOrderStatus = async (req, res) => {
   try {
-    const { productId } = req.params;
+    const { productId, orderId } = req.params;
     const { status } = req.body;
 
-    console.log("🔄 Updating product order status:", { productId, status });
+    console.log("🔄 Updating product order:", { productId, orderId, status });
 
-    // ✅ Validate status
-    const validStatuses = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ error: "Invalid status" });
-    }
-
-    // ✅ Update product safely (no validation triggered)
-    const updatedProduct = await Product.findByIdAndUpdate(
-      productId,
-      { $set: { orderStatus: status } },
-      { new: true }
-    );
-
-    if (!updatedProduct) {
+    const product = await Product.findById(productId);
+    if (!product) {
       return res.status(404).json({ error: "Product not found" });
     }
 
-    console.log("✅ Product order status updated successfully");
+    // Find and update the specific order in product's orders array
+    const order = product.orders.id(orderId);
+    if (!order) {
+      return res.status(404).json({ error: "Order not found in product" });
+    }
+
+    order.status = status;
+    order.updatedAt = new Date();
+    
+    await product.save();
 
     res.status(200).json({
-      message: "Order status updated successfully",
+      message: "Product order status updated successfully",
+      order: order,
       product: {
-        _id: updatedProduct._id,
-        title: updatedProduct.title,
-        orderStatus: updatedProduct.orderStatus,
-      },
+        _id: product._id,
+        title: product.title
+      }
     });
   } catch (err) {
     console.error("❌ updateProductOrderStatus Error:", err);
@@ -185,7 +165,7 @@ export const updateProductOrderStatus = async (req, res) => {
   }
 };
 
-//  Get products uploaded by current user
+// Get products uploaded by current user
 export const getMyProducts = async (req, res) => {
   try {
     if (!req.user || !req.user._id) {
@@ -195,46 +175,12 @@ export const getMyProducts = async (req, res) => {
     const products = await Product.find({ uploadedBy: req.user._id });
     res.status(200).json(products);
   } catch (err) {
-    console.error(" getMyProducts Error:", err);
+    console.error("❌ getMyProducts Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
-//  Add product order
-export const addProductOrder = async (req, res) => {
-  try {
-    const { productId } = req.params;
-    const { quantity = 1 } = req.body;
-
-    const updatedProduct = await Product.findByIdAndUpdate(
-      productId,
-      {
-        $push: {
-          orders: {
-            user: req.user._id,
-            quantity: quantity,
-            status: "pending",
-          },
-        },
-      },
-      { new: true }
-    ).populate("orders.user", "name email");
-
-    if (!updatedProduct) {
-      return res.status(404).json({ error: "Product not found" });
-    }
-
-    res.status(200).json({
-      message: "Order added successfully",
-      product: updatedProduct,
-    });
-  } catch (err) {
-    console.error(" addProductOrder Error:", err);
-    res.status(500).json({ error: err.message });
-  }
-};
-
-//  Update product
+// Update product
 export const updateProduct = async (req, res) => {
   try {
     const updatedProduct = await Product.findByIdAndUpdate(
@@ -250,7 +196,7 @@ export const updateProduct = async (req, res) => {
   }
 };
 
-//  Delete product
+// Delete product
 export const deleteProduct = async (req, res) => {
   try {
     const deletedProduct = await Product.findByIdAndDelete(req.params.id);
@@ -262,7 +208,7 @@ export const deleteProduct = async (req, res) => {
   }
 };
 
-//  Get products by tag
+// Get products by tag
 export const getProductsByTag = async (req, res) => {
   try {
     const { tag } = req.params;
@@ -279,7 +225,7 @@ export const getProductsByTag = async (req, res) => {
   }
 };
 
-//  Get popular products
+// Get popular products
 export const getPopularProducts = async (req, res) => {
   try {
     const products = await Product.find()
