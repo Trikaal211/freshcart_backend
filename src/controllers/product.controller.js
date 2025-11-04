@@ -144,50 +144,50 @@ export const createProduct = async (req, res) => {
   }
 };
 //  Update product order status
-export const updateProductOrderStatus = async (req, res) => {
-  try {
-    const { productId, orderId } = req.params;
-    const { status } = req.body;
+// export const updateProductOrderStatus = async (req, res) => {
+//   try {
+//     const { productId, orderId } = req.params;
+//     const { status } = req.body;
 
-    console.log("🔄 Updating product order status:", { productId, orderId, status });
+//     console.log("🔄 Updating product order status:", { productId, orderId, status });
 
-    // Validate status
-    const validStatuses = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ error: "Invalid status" });
-    }
+//     // Validate status
+//     const validStatuses = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
+//     if (!validStatuses.includes(status)) {
+//       return res.status(400).json({ error: "Invalid status" });
+//     }
 
-    // Find the product
-    const product = await Product.findById(productId);
-    if (!product) {
-      return res.status(404).json({ error: "Product not found" });
-    }
+//     // Find the product
+//     const product = await Product.findById(productId);
+//     if (!product) {
+//       return res.status(404).json({ error: "Product not found" });
+//     }
 
-    // Find the specific order in the product's orders array
-    const order = product.orders.id(orderId);
-    if (!order) {
-      return res.status(404).json({ error: "Order not found in this product" });
-    }
+//     // Find the specific order in the product's orders array
+//     const order = product.orders.id(orderId);
+//     if (!order) {
+//       return res.status(404).json({ error: "Order not found in this product" });
+//     }
 
-    // Update order status
-    order.status = status;
-    await product.save();
+//     // Update order status
+//     order.status = status;
+//     await product.save();
 
-    console.log("✅ Product order status updated successfully");
+//     console.log("✅ Product order status updated successfully");
 
-    res.status(200).json({
-      message: "Order status updated successfully",
-      order: order,
-      product: {
-        _id: product._id,
-        title: product.title
-      }
-    });
-  } catch (err) {
-    console.error("❌ updateProductOrderStatus Error:", err);
-    res.status(500).json({ error: err.message });
-  }
-};
+//     res.status(200).json({
+//       message: "Order status updated successfully",
+//       order: order,
+//       product: {
+//         _id: product._id,
+//         title: product.title
+//       }
+//     });
+//   } catch (err) {
+//     console.error("❌ updateProductOrderStatus Error:", err);
+//     res.status(500).json({ error: err.message });
+//   }
+// };
 //  Get products uploaded by current user
 export const getMyProducts = async (req, res) => {
   try {
@@ -204,38 +204,38 @@ export const getMyProducts = async (req, res) => {
 };
 
 //  Add product order
-export const addProductOrder = async (req, res) => {
-  try {
-    const { productId } = req.params;
-    const { quantity = 1 } = req.body;
+// export const addProductOrder = async (req, res) => {
+//   try {
+//     const { productId } = req.params;
+//     const { quantity = 1 } = req.body;
 
-    const updatedProduct = await Product.findByIdAndUpdate(
-      productId,
-      {
-        $push: {
-          orders: {
-            user: req.user._id,
-            quantity: quantity,
-            status: "pending",
-          },
-        },
-      },
-      { new: true }
-    ).populate("orders.user", "name email");
+//     const updatedProduct = await Product.findByIdAndUpdate(
+//       productId,
+//       {
+//         $push: {
+//           orders: {
+//             user: req.user._id,
+//             quantity: quantity,
+//             status: "pending",
+//           },
+//         },
+//       },
+//       { new: true }
+//     ).populate("orders.user", "name email");
 
-    if (!updatedProduct) {
-      return res.status(404).json({ error: "Product not found" });
-    }
+//     if (!updatedProduct) {
+//       return res.status(404).json({ error: "Product not found" });
+//     }
 
-    res.status(200).json({
-      message: "Order added successfully",
-      product: updatedProduct,
-    });
-  } catch (err) {
-    console.error(" addProductOrder Error:", err);
-    res.status(500).json({ error: err.message });
-  }
-};
+//     res.status(200).json({
+//       message: "Order added successfully",
+//       product: updatedProduct,
+//     });
+//   } catch (err) {
+//     console.error(" addProductOrder Error:", err);
+//     res.status(500).json({ error: err.message });
+//   }
+// };
 
 //  Update product
 export const updateProduct = async (req, res) => {
@@ -295,5 +295,98 @@ export const getPopularProducts = async (req, res) => {
   } catch (err) {
     console.error("❌ getPopularProducts Error:", err);
     res.status(500).json({ error: "Server failed. Check DB and category references." });
+  }
+};
+export const addOrderToProduct = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const { 
+      quantity, 
+      orderPrice, 
+      orderId,
+      buyerName,
+      buyerEmail,
+      address,
+      phone
+    } = req.body;
+
+    const product = await Product.findByIdAndUpdate(
+      productId,
+      {
+        $push: {
+          orders: {
+            orderId,
+            quantity,
+            orderPrice,
+            buyerName,
+            buyerEmail,
+            address,
+            phone,
+            status: "pending"
+          }
+        },
+        $inc: { quantity: -quantity } // Reduce stock
+      },
+      { new: true }
+    );
+
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    res.json({
+      success: true,
+      message: "Order added to product successfully",
+      product
+    });
+  } catch (error) {
+    console.error("Add order to product error:", error);
+    res.status(500).json({ error: "Failed to add order to product" });
+  }
+};
+
+// Update product order status
+export const updateProductOrderStatus = async (req, res) => {
+  try {
+    const { productId, orderId } = req.params;
+    const { status } = req.body;
+
+    const product = await Product.findOneAndUpdate(
+      { 
+        _id: productId,
+        "orders.orderId": orderId 
+      },
+      { 
+        $set: { "orders.$.status": status } 
+      },
+      { new: true }
+    );
+
+    if (!product) {
+      return res.status(404).json({ error: "Product or order not found" });
+    }
+
+    res.json({
+      success: true,
+      message: "Order status updated successfully",
+      product
+    });
+  } catch (error) {
+    console.error("Update product order status error:", error);
+    res.status(500).json({ error: "Failed to update order status" });
+  }
+};
+
+// Get products with orders for current user (seller)
+export const getMyProductsWithOrders = async (req, res) => {
+  try {
+    const products = await Product.find({ uploadedBy: req.user._id })
+      .populate('uploadedBy', 'firstName lastName email')
+      .sort({ createdAt: -1 });
+
+    res.json(products);
+  } catch (error) {
+    console.error("Get my products error:", error);
+    res.status(500).json({ error: "Failed to fetch products" });
   }
 };

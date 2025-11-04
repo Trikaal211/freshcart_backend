@@ -31,16 +31,31 @@ const orderSchema = new mongoose.Schema(
       type: String,
       required: true
     },
+    phone: {
+      type: String,
+      required: true
+    },
+    buyerName: {
+      type: String,
+      required: true
+    },
+    buyerEmail: {
+      type: String,
+      required: true
+    },
     status: {
       type: String,
       enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],
       default: "pending"
     },
-    paymentStatus: {
+    paymentMethod: {
       type: String,
-      enum: ["pending", "completed", "failed"],
-      default: "pending"
-    }
+      enum: ["card", "paypal", "gpay", "cod"],
+      default: "cod"
+    },
+    deliveryTime: String,
+    orderNote: String,
+    packaging: String
   },
   { 
     timestamps: true,
