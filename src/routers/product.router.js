@@ -9,7 +9,6 @@ import {
   getProductsByTag,
   getPopularProducts,
   getMyProducts,
-  addProductOrder,
   updateProductOrderStatus  //  Add this import
 } from "../controllers/product.controller.js";
 import { authMiddleware } from "../../middlewares/user.middleware.js";  
@@ -39,7 +38,6 @@ productRouter.post(
   createProduct
 );
 
-productRouter.post("/:productId/order", authMiddleware, addProductOrder);
 productRouter.patch("/:productId/orders/:orderId/status", authMiddleware, updateProductOrderStatus); // Add this route
 productRouter.put("/:id", updateProduct);
 productRouter.delete("/:id", deleteProduct);

@@ -171,6 +171,7 @@ export const updateProductOrderStatus = async (req, res) => {
 
     // Update order status
     order.status = status;
+    order.updatedAt = new Date();
     await product.save();
 
     console.log("✅ Product order status updated successfully");
@@ -199,40 +200,6 @@ export const getMyProducts = async (req, res) => {
     res.status(200).json(products);
   } catch (err) {
     console.error(" getMyProducts Error:", err);
-    res.status(500).json({ error: err.message });
-  }
-};
-
-//  Add product order
-export const addProductOrder = async (req, res) => {
-  try {
-    const { productId } = req.params;
-    const { quantity = 1 } = req.body;
-
-    const updatedProduct = await Product.findByIdAndUpdate(
-      productId,
-      {
-        $push: {
-          orders: {
-            user: req.user._id,
-            quantity: quantity,
-            status: "pending",
-          },
-        },
-      },
-      { new: true }
-    ).populate("orders.user", "name email");
-
-    if (!updatedProduct) {
-      return res.status(404).json({ error: "Product not found" });
-    }
-
-    res.status(200).json({
-      message: "Order added successfully",
-      product: updatedProduct,
-    });
-  } catch (err) {
-    console.error(" addProductOrder Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
