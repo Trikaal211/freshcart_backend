@@ -143,6 +143,7 @@ export const createProduct = async (req, res) => {
 };
 
 // Update product order status - FIXED VERSION
+// Update product order status - FIXED VERSION
 export const updateProductOrderStatus = async (req, res) => {
   try {
     const { productId, orderId } = req.params;
@@ -167,36 +168,38 @@ export const updateProductOrderStatus = async (req, res) => {
       return res.status(404).json({ error: "Product not found" });
     }
 
-    console.log("📦 Product found, orders count:", product.orders?.length);
+    console.log("📦 Product found:", product.title);
+    console.log("📊 Orders in product:", product.orders?.length);
 
-    // ✅ FIXED: Find order by orderId field
-    const order = product.orders.find(o => 
-      o.orderId && o.orderId.toString() === orderId
-    );
+    // ✅ FIXED: Better way to find and update order
+    let orderFound = false;
+    
+    for (let i = 0; i < product.orders.length; i++) {
+      const order = product.orders[i];
+      if (order.orderId && order.orderId.toString() === orderId) {
+        // Update the order
+        product.orders[i].status = status;
+        product.orders[i].updatedAt = new Date();
+        orderFound = true;
+        console.log("✅ Order found and updated");
+        break;
+      }
+    }
 
-    if (!order) {
-      console.log("❌ Order not found in product. Available orders:", 
-        product.orders.map(o => ({
-          orderId: o.orderId,
-          status: o.status
-        }))
-      );
+    if (!orderFound) {
+      console.log("❌ Order not found in product");
       return res.status(404).json({ error: "Order not found in this product" });
     }
 
-    // Update order status
-    order.status = status;
-    order.updatedAt = new Date();
-    
+    // Save the product
     await product.save();
-
-    console.log("✅ Product order status updated successfully");
+    console.log("✅ Product saved with updated order status");
 
     res.status(200).json({
       message: "Order status updated successfully",
       order: {
-        orderId: order.orderId,
-        status: order.status,
+        orderId: orderId,
+        status: status,
         productId: product._id,
         productTitle: product.title
       }

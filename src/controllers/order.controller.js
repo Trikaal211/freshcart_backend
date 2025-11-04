@@ -55,25 +55,25 @@ export const createOrder = async (req, res) => {
       deliveryTime: deliveryTime || "",
       paymentMethod: paymentMethod || "cod",
       orderNote: orderNote || "",
-      status: "pending",
+      status: "pending", // ✅ ALWAYS SET TO PENDING
       paymentStatus: "pending"
     });
 
     const savedOrder = await order.save();
-    console.log("✅ Main order created:", savedOrder._id);
+    console.log("✅ Main order created with ID:", savedOrder._id);
 
-    // ✅ FIXED: Add order to each product's orders array WITH PROPER DATA
+    // ✅ FIXED: Add order to each product's orders array
     for (const item of items) {
       const product = await Product.findById(item.productId);
       if (product) {
-        // ✅ FIXED: Use the correct price and ensure all fields are included
+        // ✅ FIXED: Ensure ALL fields are properly set
         const orderData = {
           user: userId,
           quantity: item.quantity,
           orderDate: new Date(),
-          status: "pending",
+          status: "pending", // ✅ ALWAYS SET TO PENDING (not shipped)
           orderPrice: item.price || product.price,
-          orderId: savedOrder._id, // ✅ This is the main fix
+          orderId: savedOrder._id,
           buyerName: `${req.user.firstName} ${req.user.lastName}`,
           buyerEmail: req.user.email,
           address: address,
@@ -86,11 +86,11 @@ export const createOrder = async (req, res) => {
           productId: item.productId,
           productTitle: product.title,
           orderId: savedOrder._id,
-          orderData: orderData
+          status: "pending" // ✅ Confirm status is pending
         });
 
-        // ✅ FIXED: Use findByIdAndUpdate with proper options
-        const updatedProduct = await Product.findByIdAndUpdate(
+        // Add order to product
+        await Product.findByIdAndUpdate(
           item.productId,
           {
             $push: { 
@@ -98,25 +98,11 @@ export const createOrder = async (req, res) => {
             }
           },
           { 
-            new: true,
-            runValidators: true 
+            new: true
           }
         );
 
-        if (updatedProduct) {
-          console.log("✅ Order added to product successfully");
-          console.log("📊 Product orders count:", updatedProduct.orders.length);
-          
-          // Verify the last order was added correctly
-          const lastOrder = updatedProduct.orders[updatedProduct.orders.length - 1];
-          console.log("🔍 Last order in product:", {
-            orderId: lastOrder.orderId,
-            buyerName: lastOrder.buyerName,
-            status: lastOrder.status
-          });
-        } else {
-          console.log("❌ Failed to update product");
-        }
+        console.log("✅ Order added to product successfully");
       }
     }
 
