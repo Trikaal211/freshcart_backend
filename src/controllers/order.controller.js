@@ -7,10 +7,10 @@ export const createOrder = async (req, res) => {
     const { address, items } = req.body;
     const userId = req.user._id;
 
+    // Calculate total amount and validate items
     let totalAmount = 0;
     const orderItems = [];
 
-    // Validate items and calculate total
     for (const item of items) {
       const product = await Product.findById(item.productId);
       if (!product) {
@@ -39,22 +39,8 @@ export const createOrder = async (req, res) => {
         product.inStock = false;
       }
       await product.save();
-    }
 
-    // Create order
-    const order = new Order({
-      user: userId,
-      items: orderItems,
-      totalAmount,
-      address,
-      status: "pending",
-      paymentStatus: "pending"
-    });
-
-    const savedOrder = await order.save();
-
-    // Add order to each product's orders array
-    for (const item of items) {
+      // Add order to product's orders array for the uploader to see
       await Product.findByIdAndUpdate(
         item.productId,
         {
@@ -64,13 +50,45 @@ export const createOrder = async (req, res) => {
               quantity: item.quantity,
               orderDate: new Date(),
               status: "pending",
-              orderPrice: item.price,
-              orderId: savedOrder._id
+              orderPrice: product.price
             }
           }
         }
       );
     }
+
+    // Create order
+ // Create order
+const order = new Order({
+  user: userId,
+  items: orderItems,
+  totalAmount,
+  address,
+  status: "pending",
+  paymentStatus: "pending"
+});
+
+const savedOrder = await order.save();
+
+// ✅ यह नया हिस्सा जोड़ो (हर product.orders में orderId भी डालेंगे)
+for (const item of items) {
+  await Product.findByIdAndUpdate(
+    item.productId,
+    {
+      $push: {
+        orders: {
+          user: userId,
+          quantity: item.quantity,
+          orderDate: new Date(),
+          status: "pending",
+          orderPrice: item.price,
+          orderId: savedOrder._id   // 🟢 यह नई लाइन डालो
+        }
+      }
+    }
+  );
+}
+
 
     res.status(201).json({
       message: "Order created successfully",
@@ -109,33 +127,46 @@ export const getAllOrders = async (req, res) => {
   }
 };
 
-// Update order status
-export const updateOrderStatus = async (req, res) => {
+// Update order statu
+
+// Add this to your order.controller.js
+// Add this to your product.controller.js
+export const updateProductOrderStatus = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { productId, orderId } = req.params;
     const { status } = req.body;
 
-    const validStatuses = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ error: "Invalid status" });
+    console.log("🔄 Updating product order:", { productId, orderId, status });
+
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
     }
 
-    const updatedOrder = await Order.findByIdAndUpdate(
-      id,
-      { status },
-      { new: true }
-    );
-
-    if (!updatedOrder) {
-      return res.status(404).json({ error: "Order not found" });
+    // Find the specific order in the product's orders array
+    const order = product.orders.id(orderId);
+    if (!order) {
+      return res.status(404).json({ error: "Order not found in product" });
     }
+
+    // Update order status
+    order.status = status;
+    order.updatedAt = new Date();
+    
+    await product.save();
+
+    console.log("✅ Product order status updated successfully");
 
     res.status(200).json({
       message: "Order status updated successfully",
-      order: updatedOrder
+      order: order,
+      product: {
+        _id: product._id,
+        title: product.title
+      }
     });
-  } catch (error) {
-    console.error("❌ Error updating order status:", error);
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    console.error("❌ updateProductOrderStatus Error:", err);
+    res.status(500).json({ error: err.message });
   }
 };
