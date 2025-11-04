@@ -87,7 +87,7 @@ const productSchema = new mongoose.Schema(
 uploadedBy: {
   type: mongoose.Schema.Types.ObjectId,
   ref: "User",
-  required: true
+  required: false,
 },
     deliveryInfo: {
       type: String,
