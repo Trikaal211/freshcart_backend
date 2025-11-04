@@ -40,7 +40,7 @@ productRouter.post(
 );
 
 productRouter.post("/:productId/order", authMiddleware, addProductOrder);
-productRouter.patch("/:productId/orders/:orderId/status", authMiddleware, updateProductOrderStatus); // ✅ Add this route
+productRouter.patch("/:productId/orders/:orderId/status", authMiddleware, updateProductOrderStatus); // Add this route
 productRouter.put("/:id", updateProduct);
 productRouter.delete("/:id", deleteProduct);
 
