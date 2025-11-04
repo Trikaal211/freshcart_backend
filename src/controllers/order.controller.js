@@ -1,25 +1,26 @@
 import Order from "../../schema/order.model.js";
 import Product from "../../schema/productList.model.js";
 
+// Create new order - FIXED VERSION
 export const createOrder = async (req, res) => {
   try {
-    const { address, items } = req.body;
+    const { address, items, phone, deliveryTime, paymentMethod, orderNote } = req.body;
     const userId = req.user._id;
-
-    if (!items || !items.length) {
-      return res.status(400).json({ error: "No items provided" });
-    }
 
     let totalAmount = 0;
     const orderItems = [];
 
-    // 1️⃣ Calculate total & validate stock
+    // Validate and prepare items
     for (const item of items) {
       const product = await Product.findById(item.productId);
-      if (!product) return res.status(404).json({ error: "Product not found" });
+      if (!product) {
+        return res.status(404).json({ error: `Product not found: ${item.productId}` });
+      }
 
       if (product.quantity < item.quantity) {
-        return res.status(400).json({ error: `Insufficient stock for ${product.title}` });
+        return res.status(400).json({ 
+          error: `Insufficient quantity for product: ${product.title}` 
+        });
       }
 
       const itemTotal = product.price * item.quantity;
@@ -28,10 +29,10 @@ export const createOrder = async (req, res) => {
       orderItems.push({
         product: product._id,
         quantity: item.quantity,
-        price: product.price,
+        price: product.price
       });
 
-      // Decrease stock
+      // Update product quantity
       product.quantity -= item.quantity;
       if (product.quantity === 0) {
         product.availability = "Out of Stock";
@@ -40,41 +41,61 @@ export const createOrder = async (req, res) => {
       await product.save();
     }
 
-    // 2️⃣ Create the order document
-    const newOrder = new Order({
+    // Create main order
+    const order = new Order({
       user: userId,
       items: orderItems,
       totalAmount,
       address,
+      phone: phone || "",
+      deliveryTime: deliveryTime || "",
+      paymentMethod: paymentMethod || "cod",
+      orderNote: orderNote || "",
       status: "pending",
-      paymentStatus: "pending",
+      paymentStatus: "pending"
     });
 
-    const savedOrder = await newOrder.save();
+    const savedOrder = await order.save();
 
-    // 3️⃣ Link this order to each seller’s product.orders
+    // ✅ FIXED: Add order to each product's orders array
     for (const item of items) {
-      await Product.findByIdAndUpdate(item.productId, {
-        $push: {
-          orders: {
-            user: userId,
-            orderId: savedOrder._id, // consistent link
-            quantity: item.quantity,
-            status: "pending",
-            orderDate: new Date(),
-            orderPrice: item.price,
-          },
-        },
-      });
+      const product = await Product.findById(item.productId);
+      if (product) {
+        const orderData = {
+          user: userId,
+          quantity: item.quantity,
+          orderDate: new Date(),
+          status: "pending",
+          orderPrice: item.price || product.price,
+          orderId: savedOrder._id,
+          buyerName: `${req.user.firstName} ${req.user.lastName}`,
+          buyerEmail: req.user.email,
+          address: address,
+          phone: phone || "",
+          deliveryTime: deliveryTime || ""
+        };
+
+        console.log("🟢 Adding order to product:", {
+          productId: item.productId,
+          orderId: savedOrder._id
+        });
+
+        await Product.findByIdAndUpdate(
+          item.productId,
+          {
+            $push: { orders: orderData }
+          }
+        );
+      }
     }
 
     res.status(201).json({
       message: "Order created successfully",
-      order: savedOrder,
+      order: savedOrder
     });
-  } catch (err) {
-    console.error("❌ Order creation error:", err);
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    console.error("❌ Error creating order:", error);
+    res.status(500).json({ error: error.message });
   }
 };
 
@@ -105,46 +126,33 @@ export const getAllOrders = async (req, res) => {
   }
 };
 
-// Update order statu
-
-// Add this to your order.controller.js
-// Add this to your product.controller.js
-export const updateProductOrderStatus = async (req, res) => {
+// Update order status
+export const updateOrderStatus = async (req, res) => {
   try {
-    const { productId, orderId } = req.params;
+    const { id } = req.params;
     const { status } = req.body;
 
-    console.log("🔄 Updating product order:", { productId, orderId, status });
-
-    const product = await Product.findById(productId);
-    if (!product) {
-      return res.status(404).json({ error: "Product not found" });
+    const validStatuses = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: "Invalid status" });
     }
 
-    // Find the specific order in the product's orders array
-    const order = product.orders.id(orderId);
-    if (!order) {
-      return res.status(404).json({ error: "Order not found in product" });
+    const updatedOrder = await Order.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true }
+    );
+
+    if (!updatedOrder) {
+      return res.status(404).json({ error: "Order not found" });
     }
-
-    // Update order status
-    order.status = status;
-    order.updatedAt = new Date();
-    
-    await product.save();
-
-    console.log("✅ Product order status updated successfully");
 
     res.status(200).json({
       message: "Order status updated successfully",
-      order: order,
-      product: {
-        _id: product._id,
-        title: product.title
-      }
+      order: updatedOrder
     });
-  } catch (err) {
-    console.error("❌ updateProductOrderStatus Error:", err);
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    console.error("❌ Error updating order status:", error);
+    res.status(500).json({ error: error.message });
   }
 };

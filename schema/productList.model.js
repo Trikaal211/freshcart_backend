@@ -84,11 +84,13 @@ const productSchema = new mongoose.Schema(
     lifestyle: {
       type: [String],
     },
-uploadedBy: {
-  type: mongoose.Schema.Types.ObjectId,
-  ref: "User",
-  required: false,
-},
+
+    uploadedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: false,
+    },
+
     deliveryInfo: {
       type: String,
       trim: true,
@@ -168,7 +170,7 @@ uploadedBy: {
       maxlength: [160, "Meta description cannot exceed 160 characters"],
     },
 
-    // 🟢 NEW FIELD — store orders for each product
+    // 🟢 FIXED: orders array with proper fields
     orders: [
       {
         user: {
@@ -191,6 +193,37 @@ uploadedBy: {
         orderPrice: {
           type: Number,
         },
+        // ✅ ADDED: This field was missing
+        orderId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Order",
+          required: true
+        },
+        // ✅ ADDED: Buyer information fields
+        buyerName: {
+          type: String,
+          default: ""
+        },
+        buyerEmail: {
+          type: String,
+          default: ""
+        },
+        address: {
+          type: String,
+          default: ""
+        },
+        phone: {
+          type: String,
+          default: ""
+        },
+        deliveryTime: {
+          type: String,
+          default: ""
+        },
+        updatedAt: {
+          type: Date,
+          default: Date.now
+        }
       },
     ],
   },

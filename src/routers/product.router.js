@@ -9,7 +9,7 @@ import {
   getProductsByTag,
   getPopularProducts,
   getMyProducts,
-  updateProductOrderStatus  //  Add this import
+  updateProductOrderStatus
 } from "../controllers/product.controller.js";
 import { authMiddleware } from "../../middlewares/user.middleware.js";  
 import {upload} from "../../config/multer.js";
@@ -23,23 +23,9 @@ productRouter.get("/tag/:tag", getProductsByTag);
 productRouter.get("/my-products", authMiddleware, getMyProducts);
 productRouter.get("/:id", getProductById);
 
-productRouter.post(
-  "/",
-  authMiddleware,
-  (req, res, next) => {
-    console.log("Before multer");
-    next();
-  },
-  upload.array("images", 5),
-  (req, res, next) => {
-    console.log("After multer, before createProduct");
-    next();
-  },
-  createProduct
-);
-
-productRouter.patch("/:productId/orders/:orderId/status", authMiddleware, updateProductOrderStatus); // Add this route
-productRouter.put("/:id", updateProduct);
-productRouter.delete("/:id", deleteProduct);
+productRouter.post("/", authMiddleware, upload.array("images", 5), createProduct);
+productRouter.patch("/:productId/orders/:orderId/status", authMiddleware, updateProductOrderStatus);
+productRouter.put("/:id", authMiddleware, updateProduct);
+productRouter.delete("/:id", authMiddleware, deleteProduct);
 
 export default productRouter;
