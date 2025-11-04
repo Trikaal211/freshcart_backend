@@ -84,13 +84,11 @@ const productSchema = new mongoose.Schema(
     lifestyle: {
       type: [String],
     },
-
-    uploadedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: false,
-    },
-
+uploadedBy: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "User",
+  required: false, // 👈 change this
+},
     deliveryInfo: {
       type: String,
       trim: true,
@@ -170,63 +168,32 @@ const productSchema = new mongoose.Schema(
       maxlength: [160, "Meta description cannot exceed 160 characters"],
     },
 
-    // 🟢 FIXED: orders array with proper fields
-  // In product schema, make sure orders array has this structure:
-  orders: [
-  {
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
-    quantity: {
-      type: Number,
-      default: 1,
-    },
-    orderDate: {
-      type: Date,
-      default: Date.now,
-    },
-    status: {
-      type: String,
-      enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],
-      default: "pending",
-    },
-    orderPrice: {
-      type: Number,
-    },
-    // ✅ THIS FIELD MUST EXIST AND BE REQUIRED
-    orderId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Order",
-      required: true
-    },
-    buyerName: {
-      type: String,
-      default: ""
-    },
-    buyerEmail: {
-      type: String,
-      default: ""
-    },
-    address: {
-      type: String,
-      default: ""
-    },
-    phone: {
-      type: String,
-      default: ""
-    },
-    deliveryTime: {
-      type: String,
-      default: ""
-    },
-    updatedAt: {
-      type: Date,
-      default: Date.now
-    }
+    // 🟢 NEW FIELD — store orders for each product
+    orders: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        quantity: {
+          type: Number,
+          default: 1,
+        },
+        orderDate: {
+          type: Date,
+          default: Date.now,
+        },
+        status: {
+          type: String,
+          enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],
+          default: "pending",
+        },
+        orderPrice: {
+          type: Number,
+        },
+      },
+    ],
   },
-],
-},
   {
     timestamps: true,
     versionKey: false,

@@ -1,6 +1,6 @@
 import Product from "../../schema/productList.model.js";
 
-// Get all products
+//  Get all products
 export const getProducts = async (req, res) => {
   try {
     let query = Product.find().populate("category", "name");
@@ -12,12 +12,12 @@ export const getProducts = async (req, res) => {
     const products = await query;
     res.status(200).json(products);
   } catch (err) {
-    console.error("❌ getProducts Error:", err);
+    console.error(" getProducts Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
-// Get products by lifestyle
+//  Get products by lifestyle
 export const getProductsByLifestyle = async (req, res) => {
   try {
     const { type } = req.params;
@@ -34,7 +34,7 @@ export const getProductsByLifestyle = async (req, res) => {
   }
 };
 
-// Get product by ID (auto increment clicks)
+//  Get product by ID (auto increment clicks)
 export const getProductById = async (req, res) => {
   try {
     const product = await Product.findByIdAndUpdate(
@@ -47,12 +47,13 @@ export const getProductById = async (req, res) => {
 
     res.status(200).json(product);
   } catch (err) {
-    console.error("❌ getProductById Error:", err);
+    console.error(" getProductById Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
-// Create new product
+//  Create new product
+
 export const createProduct = async (req, res) => {
   try {
     console.log("🖼 File details full:", JSON.stringify(req.files, null, 2));
@@ -62,23 +63,24 @@ export const createProduct = async (req, res) => {
     console.log(" Body:", req.body);
     console.log(" Files:", req.files);
 
-    // Authentication Check
+    //  Authentication Check
     if (!req.user || !req.user._id) {
       return res.status(401).json({ error: "Unauthorized: user not found" });
     }
 
-    // Handle Images (Cloudinary)
+    // 🖼 Handle Images (Cloudinary)
     let imageUrls = [];
     if (req.files && req.files.length > 0) {
       imageUrls = req.files.map((file) => {
         console.log(" File details:", file);
+        //  Cloudinary always provides 'path' and 'secure_url'
         return file.path || file.secure_url || "";
       }).filter(url => url !== "");
     } else {
       console.log(" No images uploaded");
     }
 
-    // Parse Lifestyle Array Safely
+    //  Parse Lifestyle Array Safely
     let lifestyleArray = [];
     if (req.body.lifestyle) {
       try {
@@ -90,7 +92,7 @@ export const createProduct = async (req, res) => {
       }
     }
 
-    // Product Data
+    //  Product Data
     const productData = {
       title: req.body.title?.trim() || "Untitled Product",
       slug: req.body.slug?.trim() || req.body.title?.trim().toLowerCase().replace(/\s+/g, "-"),
@@ -111,7 +113,7 @@ export const createProduct = async (req, res) => {
 
     console.log("✅ Final Product Data:", productData);
 
-    // Validation
+    //  Validation
     if (!productData.category) {
       return res.status(400).json({ error: "Category is required" });
     }
@@ -126,7 +128,7 @@ export const createProduct = async (req, res) => {
       product: savedProduct,
     });
   } catch (error) {
-    console.error("❌ PRODUCT CREATION ERROR:", error);
+    console.error(" PRODUCT CREATION ERROR:", error);
 
     if (error.name === "ValidationError") {
       return res.status(400).json({
@@ -141,19 +143,13 @@ export const createProduct = async (req, res) => {
     });
   }
 };
-
-// Update product order status - FIXED VERSION
+//  Update product order status
 export const updateProductOrderStatus = async (req, res) => {
   try {
     const { productId, orderId } = req.params;
     const { status } = req.body;
 
     console.log("🔄 Updating product order status:", { productId, orderId, status });
-
-    // Validate inputs
-    if (!productId || !orderId) {
-      return res.status(400).json({ error: "Product ID and Order ID are required" });
-    }
 
     // Validate status
     const validStatuses = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
@@ -167,40 +163,24 @@ export const updateProductOrderStatus = async (req, res) => {
       return res.status(404).json({ error: "Product not found" });
     }
 
-    console.log("📦 Product found:", product.title);
-    console.log("📊 Orders in product:", product.orders?.length);
-
-    // ✅ FIXED: Better way to find and update order
-    let orderFound = false;
-    
-    for (let i = 0; i < product.orders.length; i++) {
-      const order = product.orders[i];
-      if (order.orderId && order.orderId.toString() === orderId) {
-        // Update the order
-        product.orders[i].status = status;
-        product.orders[i].updatedAt = new Date();
-        orderFound = true;
-        console.log("✅ Order found and updated");
-        break;
-      }
-    }
-
-    if (!orderFound) {
-      console.log("❌ Order not found in product");
+    // Find the specific order in the product's orders array
+    const order = product.orders.id(orderId);
+    if (!order) {
       return res.status(404).json({ error: "Order not found in this product" });
     }
 
-    // Save the product
+    // Update order status
+    order.status = status;
     await product.save();
-    console.log("✅ Product saved with updated order status");
+
+    console.log("✅ Product order status updated successfully");
 
     res.status(200).json({
       message: "Order status updated successfully",
-      order: {
-        orderId: orderId,
-        status: status,
-        productId: product._id,
-        productTitle: product.title
+      order: order,
+      product: {
+        _id: product._id,
+        title: product.title
       }
     });
   } catch (err) {
@@ -208,8 +188,7 @@ export const updateProductOrderStatus = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
-// Get products uploaded by current user
+//  Get products uploaded by current user
 export const getMyProducts = async (req, res) => {
   try {
     if (!req.user || !req.user._id) {
@@ -219,12 +198,46 @@ export const getMyProducts = async (req, res) => {
     const products = await Product.find({ uploadedBy: req.user._id });
     res.status(200).json(products);
   } catch (err) {
-    console.error("❌ getMyProducts Error:", err);
+    console.error(" getMyProducts Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
-// Update product
+//  Add product order
+export const addProductOrder = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const { quantity = 1 } = req.body;
+
+    const updatedProduct = await Product.findByIdAndUpdate(
+      productId,
+      {
+        $push: {
+          orders: {
+            user: req.user._id,
+            quantity: quantity,
+            status: "pending",
+          },
+        },
+      },
+      { new: true }
+    ).populate("orders.user", "name email");
+
+    if (!updatedProduct) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    res.status(200).json({
+      message: "Order added successfully",
+      product: updatedProduct,
+    });
+  } catch (err) {
+    console.error(" addProductOrder Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+//  Update product
 export const updateProduct = async (req, res) => {
   try {
     const updatedProduct = await Product.findByIdAndUpdate(
@@ -240,7 +253,7 @@ export const updateProduct = async (req, res) => {
   }
 };
 
-// Delete product
+//  Delete product
 export const deleteProduct = async (req, res) => {
   try {
     const deletedProduct = await Product.findByIdAndDelete(req.params.id);
@@ -252,7 +265,7 @@ export const deleteProduct = async (req, res) => {
   }
 };
 
-// Get products by tag
+//  Get products by tag
 export const getProductsByTag = async (req, res) => {
   try {
     const { tag } = req.params;
@@ -269,7 +282,7 @@ export const getProductsByTag = async (req, res) => {
   }
 };
 
-// Get popular products
+//  Get popular products
 export const getPopularProducts = async (req, res) => {
   try {
     const products = await Product.find()

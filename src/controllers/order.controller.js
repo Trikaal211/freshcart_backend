@@ -1,20 +1,16 @@
 import Order from "../../schema/order.model.js";
 import Product from "../../schema/productList.model.js";
 
-// Create new order - COMPLETELY FIXED VERSION
+// Create new order
 export const createOrder = async (req, res) => {
   try {
-    const { address, items, phone, deliveryTime, paymentMethod, orderNote } = req.body;
+    const { address, items } = req.body;
     const userId = req.user._id;
 
-    console.log("🚀 Starting order creation...");
-    console.log("📦 Items:", items);
-    console.log("👤 User:", req.user);
-
+    // Calculate total amount and validate items
     let totalAmount = 0;
     const orderItems = [];
 
-    // Validate and prepare items
     for (const item of items) {
       const product = await Product.findById(item.productId);
       if (!product) {
@@ -43,87 +39,56 @@ export const createOrder = async (req, res) => {
         product.inStock = false;
       }
       await product.save();
+
+      // Add order to product's orders array for the uploader to see
+      await Product.findByIdAndUpdate(
+        item.productId,
+        {
+          $push: {
+            orders: {
+              user: userId,
+              quantity: item.quantity,
+              orderDate: new Date(),
+              status: "pending",
+              orderPrice: product.price
+            }
+          }
+        }
+      );
     }
 
-    // Create main order
-    const order = new Order({
-      user: userId,
-      items: orderItems,
-      totalAmount,
-      address,
-      phone: phone || "",
-      deliveryTime: deliveryTime || "",
-      paymentMethod: paymentMethod || "cod",
-      orderNote: orderNote || "",
-      status: "pending",
-      paymentStatus: "pending"
-    });
+    // Create order
+ // Create order
+const order = new Order({
+  user: userId,
+  items: orderItems,
+  totalAmount,
+  address,
+  status: "pending",
+  paymentStatus: "pending"
+});
 
-    const savedOrder = await order.save();
-    console.log("✅ Main order created with ID:", savedOrder._id);
+const savedOrder = await order.save();
 
-    // ✅ FIXED: Add order to each product's orders array - ULTRA DEBUGGING
-    for (const item of items) {
-      const product = await Product.findById(item.productId);
-      if (product) {
-        // ✅ FIXED: Create order data with ALL fields
-        const orderData = {
+// ✅ यह नया हिस्सा जोड़ो (हर product.orders में orderId भी डालेंगे)
+for (const item of items) {
+  await Product.findByIdAndUpdate(
+    item.productId,
+    {
+      $push: {
+        orders: {
           user: userId,
           quantity: item.quantity,
           orderDate: new Date(),
           status: "pending",
-          orderPrice: item.price || product.price,
-          orderId: savedOrder._id, // ✅ THIS IS THE KEY FIX
-          buyerName: `${req.user.firstName} ${req.user.lastName}`,
-          buyerEmail: req.user.email,
-          address: address,
-          phone: phone || "",
-          deliveryTime: deliveryTime || "",
-          updatedAt: new Date()
-        };
-
-        console.log("🟢🟢🟢 ADDING ORDER TO PRODUCT:", {
-          productId: item.productId,
-          productTitle: product.title,
-          orderId: savedOrder._id,
-          orderData: orderData
-        });
-
-        try {
-          // ✅ FIXED: Use findOneAndUpdate to see the actual result
-          const updatedProduct = await Product.findOneAndUpdate(
-            { _id: item.productId },
-            { 
-              $push: { 
-                orders: orderData 
-              } 
-            },
-            { 
-              new: true,
-              runValidators: true 
-            }
-          );
-
-          if (updatedProduct) {
-            console.log("✅✅✅ SUCCESS: Order added to product");
-            console.log("📊 Product orders count:", updatedProduct.orders.length);
-            
-            // Check the last order that was added
-            const lastOrder = updatedProduct.orders[updatedProduct.orders.length - 1];
-            console.log("🔍 Last order details:", {
-              orderId: lastOrder.orderId,
-              hasOrderId: !!lastOrder.orderId,
-              buyerName: lastOrder.buyerName,
-              status: lastOrder.status
-            });
-          } else {
-            console.log("❌❌❌ FAILED: Could not update product");
-          }
-        } catch (updateError) {
-          console.error("❌❌❌ ERROR updating product:", updateError);
+          orderPrice: item.price,
+          orderId: savedOrder._id   // 🟢 यह नई लाइन डालो
         }
       }
     }
+  );
+}
+
 
     res.status(201).json({
       message: "Order created successfully",
@@ -162,33 +127,46 @@ export const getAllOrders = async (req, res) => {
   }
 };
 
-// Update order status
-export const updateOrderStatus = async (req, res) => {
+// Update order statu
+
+// Add this to your order.controller.js
+// Add this to your product.controller.js
+export const updateProductOrderStatus = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { productId, orderId } = req.params;
     const { status } = req.body;
 
-    const validStatuses = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ error: "Invalid status" });
+    console.log("🔄 Updating product order:", { productId, orderId, status });
+
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
     }
 
-    const updatedOrder = await Order.findByIdAndUpdate(
-      id,
-      { status },
-      { new: true }
-    );
-
-    if (!updatedOrder) {
-      return res.status(404).json({ error: "Order not found" });
+    // Find the specific order in the product's orders array
+    const order = product.orders.id(orderId);
+    if (!order) {
+      return res.status(404).json({ error: "Order not found in product" });
     }
+
+    // Update order status
+    order.status = status;
+    order.updatedAt = new Date();
+    
+    await product.save();
+
+    console.log("✅ Product order status updated successfully");
 
     res.status(200).json({
       message: "Order status updated successfully",
-      order: updatedOrder
+      order: order,
+      product: {
+        _id: product._id,
+        title: product.title
+      }
     });
-  } catch (error) {
-    console.error("❌ Error updating order status:", error);
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    console.error("❌ updateProductOrderStatus Error:", err);
+    res.status(500).json({ error: err.message });
   }
 };

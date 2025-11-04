@@ -31,22 +31,6 @@ const orderSchema = new mongoose.Schema(
       type: String,
       required: true
     },
-    phone: {
-      type: String,
-      default: ""
-    },
-    deliveryTime: {
-      type: String,
-      default: ""
-    },
-    paymentMethod: {
-      type: String,
-      default: "cod"
-    },
-    orderNote: {
-      type: String,
-      default: ""
-    },
     status: {
       type: String,
       enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],
