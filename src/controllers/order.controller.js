@@ -55,7 +55,7 @@ export const createOrder = async (req, res) => {
       deliveryTime: deliveryTime || "",
       paymentMethod: paymentMethod || "cod",
       orderNote: orderNote || "",
-      status: "pending", // ✅ ALWAYS SET TO PENDING
+      status: "pending",
       paymentStatus: "pending"
     });
 
@@ -66,12 +66,11 @@ export const createOrder = async (req, res) => {
     for (const item of items) {
       const product = await Product.findById(item.productId);
       if (product) {
-        // ✅ FIXED: Ensure ALL fields are properly set
         const orderData = {
           user: userId,
           quantity: item.quantity,
           orderDate: new Date(),
-          status: "pending", // ✅ ALWAYS SET TO PENDING (not shipped)
+          status: "pending",
           orderPrice: item.price || product.price,
           orderId: savedOrder._id,
           buyerName: `${req.user.firstName} ${req.user.lastName}`,
@@ -86,7 +85,7 @@ export const createOrder = async (req, res) => {
           productId: item.productId,
           productTitle: product.title,
           orderId: savedOrder._id,
-          status: "pending" // ✅ Confirm status is pending
+          status: "pending"
         });
 
         // Add order to product
