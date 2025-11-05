@@ -1,16 +1,18 @@
 import Order from "../../schema/order.model.js";
 import Product from "../../schema/productList.model.js";
 
-// Create new order
+// 🧩 CREATE ORDER
 export const createOrder = async (req, res) => {
   try {
-    const { address, items } = req.body;
+    console.log("🟢 CREATE ORDER CALLED");
     const userId = req.user._id;
+    const { items, totalAmount, address } = req.body;
 
-    // Calculate total amount and validate items
-    let totalAmount = 0;
-    const orderItems = [];
+    if (!items || items.length === 0) {
+      return res.status(400).json({ error: "No items in the order" });
+    }
 
+    // 🔹 Step 1: Validate products & update quantity
     for (const item of items) {
       const product = await Product.findById(item.productId);
       if (!product) {
@@ -18,85 +20,53 @@ export const createOrder = async (req, res) => {
       }
 
       if (product.quantity < item.quantity) {
-        return res.status(400).json({ 
-          error: `Insufficient quantity for product: ${product.title}` 
+        return res.status(400).json({
+          error: `Insufficient stock for ${product.title}`,
         });
       }
 
-      const itemTotal = product.price * item.quantity;
-      totalAmount += itemTotal;
-
-      orderItems.push({
-        product: product._id,
-        quantity: item.quantity,
-        price: product.price
-      });
-
-      // Update product quantity
+      // Decrease product quantity
       product.quantity -= item.quantity;
-      if (product.quantity === 0) {
-        product.availability = "Out of Stock";
-        product.inStock = false;
-      }
       await product.save();
-
-      // Add order to product's orders array for the uploader to see
-      await Product.findByIdAndUpdate(
-        item.productId,
-        {
-          $push: {
-            orders: {
-              user: userId,
-              quantity: item.quantity,
-              orderDate: new Date(),
-              status: "pending",
-              orderPrice: product.price
-            }
-          }
-        }
-      );
     }
 
-    // Create order
- // Create order
-const order = new Order({
-  user: userId,
-  items: orderItems,
-  totalAmount,
-  address,
-  status: "pending",
-  paymentStatus: "pending"
-});
-
-const savedOrder = await order.save();
-
-// ✅ यह नया हिस्सा जोड़ो (हर product.orders में orderId भी डालेंगे)
-for (const item of items) {
-  await Product.findByIdAndUpdate(
-    item.productId,
-    {
-      $push: {
-        orders: {
-          user: userId,
-          quantity: item.quantity,
-          orderDate: new Date(),
-          status: "pending",
-          orderPrice: item.price,
-          orderId: savedOrder._id   // 🟢 यह नई लाइन डालो
-        }
-      }
-    }
-  );
-}
-
-
-    res.status(201).json({
-      message: "Order created successfully",
-      order: savedOrder
+    // 🔹 Step 2: Create the order
+    const order = new Order({
+      user: userId,
+      items,
+      totalAmount,
+      address,
+      status: "pending",
+      paymentStatus: "pending",
     });
+
+    const savedOrder = await order.save();
+
+    // 🔹 Step 3: Update each product's orders array — only once!
+    for (const item of items) {
+      await Product.findByIdAndUpdate(item.productId, {
+        $push: {
+          orders: {
+            user: userId,
+            quantity: item.quantity,
+            orderDate: new Date(),
+            status: "pending",
+            orderPrice: item.price,
+            orderId: savedOrder._id, // 👈 helpful for reverse lookup
+          },
+        },
+      });
+    }
+
+    console.log("✅ Order created successfully:", savedOrder._id);
+    res.status(201).json({
+      message: "Order placed successfully",
+      order: savedOrder,
+    });
+
   } catch (error) {
     console.error("❌ Error creating order:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Something went wrong while creating order" });
   }
 };
 
