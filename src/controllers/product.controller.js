@@ -143,51 +143,7 @@ export const createProduct = async (req, res) => {
     });
   }
 };
-//  Update product order status
-export const updateProductOrderStatus = async (req, res) => {
-  try {
-    const { productId, orderId } = req.params;
-    const { status } = req.body;
 
-    console.log("🔄 Updating product order status:", { productId, orderId, status });
-
-    // Validate status
-    const validStatuses = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ error: "Invalid status" });
-    }
-
-    // Find the product
-    const product = await Product.findById(productId);
-    if (!product) {
-      return res.status(404).json({ error: "Product not found" });
-    }
-
-    // Find the specific order in the product's orders array
-    const order = product.orders.id(orderId);
-    if (!order) {
-      return res.status(404).json({ error: "Order not found in this product" });
-    }
-
-    // Update order status
-    order.status = status;
-    await product.save();
-
-    console.log("✅ Product order status updated successfully");
-
-    res.status(200).json({
-      message: "Order status updated successfully",
-      order: order,
-      product: {
-        _id: product._id,
-        title: product.title
-      }
-    });
-  } catch (err) {
-    console.error("❌ updateProductOrderStatus Error:", err);
-    res.status(500).json({ error: err.message });
-  }
-};
 //  Get products uploaded by current user
 export const getMyProducts = async (req, res) => {
   try {
