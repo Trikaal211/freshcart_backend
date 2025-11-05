@@ -169,30 +169,57 @@ uploadedBy: {
     },
 
     // 🟢 NEW FIELD — store orders for each product
-    orders: [
-      {
-        user: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
-        },
-        quantity: {
-          type: Number,
-          default: 1,
-        },
-        orderDate: {
-          type: Date,
-          default: Date.now,
-        },
-        status: {
-          type: String,
-          enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],
-          default: "pending",
-        },
-        orderPrice: {
-          type: Number,
-        },
-      },
-    ],
+// Product Schema में orders array को update करें
+orders: [
+  {
+    _id: {
+      type: mongoose.Schema.Types.ObjectId,
+      auto: true // 🟢 यह important है
+    },
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    quantity: {
+      type: Number,
+      default: 1,
+    },
+    orderDate: {
+      type: Date,
+      default: Date.now,
+    },
+    status: {
+      type: String,
+      enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],
+      default: "pending",
+    },
+    orderPrice: {
+      type: Number,
+    },
+    orderId: { // 🟢 Order reference
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Order",
+      required: true
+    },
+    // 🟢 Buyer information fields add करें
+    buyerName: {
+      type: String,
+      required: true
+    },
+    buyerEmail: {
+      type: String,
+      required: true
+    },
+    address: {
+      type: String,
+      required: true
+    },
+    phone: {
+      type: String,
+      default: "Not provided"
+    }
+  },
+],
   },
   {
     timestamps: true,

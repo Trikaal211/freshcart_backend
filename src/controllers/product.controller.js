@@ -146,7 +146,7 @@ export const createProduct = async (req, res) => {
 //  Update product order status
 export const updateProductOrderStatus = async (req, res) => {
   try {
-    const { productId, orderId } = req.params;
+    const { productId, orderId } = req.params;  // orderId here is the subdocument _id
     const { status } = req.body;
 
     console.log("🔄 Updating product order status:", { productId, orderId, status });
@@ -163,15 +163,21 @@ export const updateProductOrderStatus = async (req, res) => {
       return res.status(404).json({ error: "Product not found" });
     }
 
-    // Find the specific order in the product's orders array
+    // Find the specific order in the product's orders array (using subdocument _id)
     const order = product.orders.id(orderId);
     if (!order) {
       return res.status(404).json({ error: "Order not found in this product" });
     }
 
-    // Update order status
+    // Update product order status
     order.status = status;
     await product.save();
+
+    // NEW: Sync to main Order model if orderId (main _id) exists
+    if (order.orderId) {
+      await Order.findByIdAndUpdate(order.orderId, { status: status });
+      console.log("✅ Synced status to main Order");
+    }
 
     console.log("✅ Product order status updated successfully");
 
@@ -195,7 +201,9 @@ export const getMyProducts = async (req, res) => {
       return res.status(401).json({ error: "Unauthorized: No user found" });
     }
 
-    const products = await Product.find({ uploadedBy: req.user._id });
+    const products = await Product.find({ uploadedBy: req.user._id })
+      .populate('orders.user', 'firstName lastName email');  // NEW: Populate for buyer details
+
     res.status(200).json(products);
   } catch (err) {
     console.error(" getMyProducts Error:", err);
