@@ -38,10 +38,11 @@ productRouter.post(
   },
   createProduct
 );
-
-productRouter.post("/:productId/order", authMiddleware, addProductOrder);
-productRouter.patch("/:productId/orders/:orderId/status", authMiddleware, updateProductOrderStatus); // Add this route
-productRouter.put("/:id", updateProduct);
+productRouter.patch(
+  "/:productId/orders/:orderId/status",
+  authMiddleware,
+  updateProductOrderStatus
+);productRouter.put("/:id", updateProduct);
 productRouter.delete("/:id", deleteProduct);
 
 export default productRouter;

@@ -13,6 +13,6 @@ const orderRouter = express.Router();
 orderRouter.post("/", authMiddleware, createOrder);
 orderRouter.get("/my-orders", authMiddleware, getUserOrders);
 orderRouter.get("/", authMiddleware, getAllOrders);
-orderRouter.patch("/:id/status", authMiddleware,updateProductOrderStatus); // Fixed route
+orderRouter.patch("/:productId/:orderId/status", authMiddleware, updateProductOrderStatus);
 
 export default orderRouter;

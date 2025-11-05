@@ -169,30 +169,33 @@ uploadedBy: {
     },
 
     // 🟢 NEW FIELD — store orders for each product
-    orders: [
-      {
-        user: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
-        },
-        quantity: {
-          type: Number,
-          default: 1,
-        },
-        orderDate: {
-          type: Date,
-          default: Date.now,
-        },
-        status: {
-          type: String,
-          enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],
-          default: "pending",
-        },
-        orderPrice: {
-          type: Number,
-        },
-      },
-    ],
+  orders: [
+  {
+    orderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Order",
+    },
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    quantity: {
+      type: Number,
+      default: 1,
+    },
+    orderDate: {
+      type: Date,
+      default: Date.now,
+    },
+    status: {
+      type: String,
+      enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],
+      default: "pending",
+    },
+    orderPrice: Number,
+  },
+],
+
   },
   {
     timestamps: true,

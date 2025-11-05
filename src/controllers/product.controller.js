@@ -151,43 +151,29 @@ export const updateProductOrderStatus = async (req, res) => {
 
     console.log("🔄 Updating product order status:", { productId, orderId, status });
 
-    // Validate status
     const validStatuses = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ error: "Invalid status" });
     }
 
-    // Find the product
     const product = await Product.findById(productId);
-    if (!product) {
-      return res.status(404).json({ error: "Product not found" });
-    }
+    if (!product) return res.status(404).json({ error: "Product not found" });
 
-    // Find the specific order in the product's orders array
-    const order = product.orders.id(orderId);
-    if (!order) {
-      return res.status(404).json({ error: "Order not found in this product" });
-    }
+    const order = product.orders.find(
+      (o) => o.orderId?.toString() === orderId || o._id.toString() === orderId
+    );
+    if (!order) return res.status(404).json({ error: "Order not found in this product" });
 
-    // Update order status
     order.status = status;
     await product.save();
 
-    console.log("✅ Product order status updated successfully");
-
-    res.status(200).json({
-      message: "Order status updated successfully",
-      order: order,
-      product: {
-        _id: product._id,
-        title: product.title
-      }
-    });
+    res.status(200).json({ message: "Order status updated successfully", order });
   } catch (err) {
     console.error("❌ updateProductOrderStatus Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
+
 //  Get products uploaded by current user
 export const getMyProducts = async (req, res) => {
   try {
@@ -204,38 +190,6 @@ export const getMyProducts = async (req, res) => {
 };
 
 //  Add product order
-export const addProductOrder = async (req, res) => {
-  try {
-    const { productId } = req.params;
-    const { quantity = 1 } = req.body;
-
-    const updatedProduct = await Product.findByIdAndUpdate(
-      productId,
-      {
-        $push: {
-          orders: {
-            user: req.user._id,
-            quantity: quantity,
-            status: "pending",
-          },
-        },
-      },
-      { new: true }
-    ).populate("orders.user", "name email");
-
-    if (!updatedProduct) {
-      return res.status(404).json({ error: "Product not found" });
-    }
-
-    res.status(200).json({
-      message: "Order added successfully",
-      product: updatedProduct,
-    });
-  } catch (err) {
-    console.error(" addProductOrder Error:", err);
-    res.status(500).json({ error: err.message });
-  }
-};
 
 //  Update product
 export const updateProduct = async (req, res) => {
