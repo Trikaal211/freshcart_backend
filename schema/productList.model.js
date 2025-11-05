@@ -169,13 +169,8 @@ uploadedBy: {
     },
 
     // 🟢 NEW FIELD — store orders for each product
-// Product Schema में orders array को update करें
-orders: [
+  orders: [
   {
-    _id: {
-      type: mongoose.Schema.Types.ObjectId,
-      auto: true // 🟢 यह important है
-    },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -196,28 +191,16 @@ orders: [
     orderPrice: {
       type: Number,
     },
-    orderId: { // 🟢 Order reference
+    orderId: {  // NEW: References the main Order _id for syncing
       type: mongoose.Schema.Types.ObjectId,
       ref: "Order",
-      required: true
     },
-    // 🟢 Buyer information fields add करें
-    buyerName: {
+    address: {  // NEW: Store per-order address for seller visibility
       type: String,
-      required: true
     },
-    buyerEmail: {
+    phone: {    // NEW: Optional, if you want to store buyer's phone (pull from User if available)
       type: String,
-      required: true
     },
-    address: {
-      type: String,
-      required: true
-    },
-    phone: {
-      type: String,
-      default: "Not provided"
-    }
   },
 ],
   },

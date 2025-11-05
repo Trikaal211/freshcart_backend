@@ -2,7 +2,6 @@ import Order from "../../schema/order.model.js";
 import Product from "../../schema/productList.model.js";
 
 // Create new order
-// Create new order - UPDATED VERSION
 export const createOrder = async (req, res) => {
   try {
     const { address, items } = req.body;
@@ -40,41 +39,56 @@ export const createOrder = async (req, res) => {
         product.inStock = false;
       }
       await product.save();
+
+      // Add order to product's orders array for the uploader to see
+      await Product.findByIdAndUpdate(
+        item.productId,
+        {
+          $push: {
+            orders: {
+              user: userId,
+              quantity: item.quantity,
+              orderDate: new Date(),
+              status: "pending",
+              orderPrice: product.price
+            }
+          }
+        }
+      );
     }
 
-    // Create main order
-    const order = new Order({
-      user: userId,
-      items: orderItems,
-      totalAmount,
-      address,
-      status: "pending",
-      paymentStatus: "pending"
-    });
+    // Create order
+ // Create order
+const order = new Order({
+  user: userId,
+  items: orderItems,
+  totalAmount,
+  address,
+  status: "pending",
+  paymentStatus: "pending"
+});
 
-    const savedOrder = await order.save();
+const savedOrder = await order.save();
 
-    // ✅ CORRECTED: Add orders to products with orderId
-    for (const item of items) {
-      const product = await Product.findById(item.productId);
-      if (product) {
-        // Add order to product's orders array with orderId
-        product.orders.push({
+// ✅ यह नया हिस्सा जोड़ो (हर product.orders में orderId भी डालेंगे)
+for (const item of items) {
+  await Product.findByIdAndUpdate(
+    item.productId,
+    {
+      $push: {
+        orders: {
           user: userId,
           quantity: item.quantity,
           orderDate: new Date(),
           status: "pending",
-          orderPrice: product.price,
-          orderId: savedOrder._id, // 🟢 यहाँ orderId add करें
-          // Add buyer information
-          buyerName: req.user.firstName + " " + req.user.lastName,
-          buyerEmail: req.user.email,
-          address: address,
-          phone: req.user.phone || "Not provided"
-        });
-        await product.save();
+          orderPrice: item.price,
+          orderId: savedOrder._id   // 🟢 यह नई लाइन डालो
+        }
       }
     }
+  );
+}
+
 
     res.status(201).json({
       message: "Order created successfully",
@@ -154,30 +168,5 @@ export const updateProductOrderStatus = async (req, res) => {
   } catch (err) {
     console.error("❌ updateProductOrderStatus Error:", err);
     res.status(500).json({ error: err.message });
-  }
-};
-// order.controller.js में add करें
-export const updateOrderStatus = async (req, res) => {
-  try {
-    const { orderId } = req.params;
-    const { status } = req.body;
-
-    const order = await Order.findByIdAndUpdate(
-      orderId,
-      { status },
-      { new: true }
-    );
-
-    if (!order) {
-      return res.status(404).json({ error: "Order not found" });
-    }
-
-    res.status(200).json({
-      message: "Order status updated successfully",
-      order
-    });
-  } catch (error) {
-    console.error("Error updating order status:", error);
-    res.status(500).json({ error: error.message });
   }
 };

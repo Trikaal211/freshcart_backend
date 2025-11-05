@@ -4,8 +4,7 @@ import {
   createOrder,
   getUserOrders,
   getAllOrders,
- updateProductOrderStatus, // Make sure this is imported
- updateOrderStatus
+ updateProductOrderStatus // Make sure this is imported
 } from "../controllers/order.controller.js";
 import { authMiddleware } from "../../middlewares/user.middleware.js";
 
@@ -15,7 +14,5 @@ orderRouter.post("/", authMiddleware, createOrder);
 orderRouter.get("/my-orders", authMiddleware, getUserOrders);
 orderRouter.get("/", authMiddleware, getAllOrders);
 orderRouter.patch("/:id/status", authMiddleware,updateProductOrderStatus); // Fixed route
-orderRouter.patch("/:orderId/status", authMiddleware, updateOrderStatus);
-
 
 export default orderRouter;
