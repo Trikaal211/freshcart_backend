@@ -31,6 +31,19 @@ const orderSchema = new mongoose.Schema(
       type: String,
       required: true
     },
+    phone: {
+      type: String,
+      default: "Not provided"
+    },
+    deliveryTime: {
+      type: String,
+      default: "Not specified"
+    },
+    paymentMethod: {
+      type: String,
+      enum: ["cod", "card", "paypal", "gpay"],
+      default: "cod"
+    },
     status: {
       type: String,
       enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],

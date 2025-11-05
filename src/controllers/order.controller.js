@@ -1,18 +1,18 @@
 import Order from "../../schema/order.model.js";
 import Product from "../../schema/productList.model.js";
 
-// 🧩 CREATE ORDER
+// CREATE ORDER - FIXED VERSION
 export const createOrder = async (req, res) => {
   try {
     console.log("🟢 CREATE ORDER CALLED");
     const userId = req.user._id;
-    const { items, totalAmount, address } = req.body;
+    const { items, totalAmount, address, phone, deliveryTime, paymentMethod } = req.body;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ error: "No items in the order" });
     }
 
-    // 🔹 Step 1: Validate products & update quantity
+    // Step 1: Validate products & update quantity
     for (const item of items) {
       const product = await Product.findById(item.productId);
       if (!product) {
@@ -30,32 +30,47 @@ export const createOrder = async (req, res) => {
       await product.save();
     }
 
-    // 🔹 Step 2: Create the order
+    // Step 2: Create the order
     const order = new Order({
       user: userId,
-      items,
+      items: items.map(item => ({
+        product: item.productId,
+        quantity: item.quantity,
+        price: item.price
+      })),
       totalAmount,
       address,
+      phone: phone || "Not provided",
+      deliveryTime: deliveryTime || "Not specified",
+      paymentMethod: paymentMethod || "cod",
       status: "pending",
       paymentStatus: "pending",
     });
 
     const savedOrder = await order.save();
 
-    // 🔹 Step 3: Update each product's orders array — only once!
+    // Step 3: Update each product's orders array with proper data
     for (const item of items) {
-      await Product.findByIdAndUpdate(item.productId, {
-        $push: {
-          orders: {
-            user: userId,
-            quantity: item.quantity,
-            orderDate: new Date(),
-            status: "pending",
-            orderPrice: item.price,
-            orderId: savedOrder._id, // 👈 helpful for reverse lookup
-          },
-        },
-      });
+      const product = await Product.findById(item.productId);
+      if (product) {
+        // Get user info for order details
+        const userInfo = req.user; // From auth middleware
+
+        product.orders.push({
+          user: userId,
+          quantity: item.quantity,
+          orderDate: new Date(),
+          status: "pending",
+          orderPrice: item.price,
+          orderId: savedOrder._id, // 🟢 Main order ID
+          buyerName: `${userInfo.firstName} ${userInfo.lastName}`,
+          buyerEmail: userInfo.email,
+          address: address,
+          phone: phone || "Not provided"
+        });
+
+        await product.save();
+      }
     }
 
     console.log("✅ Order created successfully:", savedOrder._id);
@@ -70,62 +85,40 @@ export const createOrder = async (req, res) => {
   }
 };
 
-// Get user's orders
-export const getUserOrders = async (req, res) => {
-  try {
-    const orders = await Order.find({ user: req.user._id })
-      .populate("items.product", "title images price")
-      .sort({ createdAt: -1 });
-
-    res.status(200).json(orders);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Get all orders (for admin)
-export const getAllOrders = async (req, res) => {
-  try {
-    const orders = await Order.find()
-      .populate("user", "name email")
-      .populate("items.product", "title images price uploadedBy")
-      .sort({ createdAt: -1 });
-
-    res.status(200).json(orders);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Update order statu
-
-// Add this to your order.controller.js
-// controllers/order.controller.js
-
+// Update order status - FIXED VERSION
 export const updateOrderStatus = async (req, res) => {
   try {
-    const { id } = req.params; // order ID
+    const { orderId } = req.params;
     const { status } = req.body;
+
+    console.log("🔄 Updating order status:", { orderId, status });
 
     const validStatuses = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ error: "Invalid status" });
     }
 
-    // 1️⃣ Update in Order collection
+    // Update in Order collection
     const updatedOrder = await Order.findByIdAndUpdate(
-      id,
+      orderId,
       { status },
       { new: true }
     ).populate("items.product", "title images uploadedBy");
 
-    if (!updatedOrder) return res.status(404).json({ error: "Order not found" });
+    if (!updatedOrder) {
+      return res.status(404).json({ error: "Order not found" });
+    }
 
-    // 2️⃣ Also update the product.orders array for each product in this order
+    // Also update the product.orders array for each product in this order
     for (const item of updatedOrder.items) {
-      await Product.updateMany(
-        { _id: item.product, "orders.orderId": id },
-        { $set: { "orders.$.status": status } }
+      await Product.updateOne(
+        { 
+          _id: item.product, 
+          "orders.orderId": orderId 
+        },
+        { 
+          $set: { "orders.$.status": status } 
+        }
       );
     }
 
@@ -139,4 +132,28 @@ export const updateOrderStatus = async (req, res) => {
   }
 };
 
+// Other order functions...
+export const getUserOrders = async (req, res) => {
+  try {
+    const orders = await Order.find({ user: req.user._id })
+      .populate("items.product", "title images price")
+      .sort({ createdAt: -1 });
 
+    res.status(200).json(orders);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const getAllOrders = async (req, res) => {
+  try {
+    const orders = await Order.find()
+      .populate("user", "name email")
+      .populate("items.product", "title images price uploadedBy")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json(orders);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

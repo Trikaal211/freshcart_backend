@@ -1,6 +1,112 @@
 import Product from "../../schema/productList.model.js";
 
-//  Get all products
+// Update product order status - FIXED VERSION
+export const updateProductOrderStatus = async (req, res) => {
+  try {
+    const { productId, orderId } = req.params;
+    const { status } = req.body;
+
+    console.log("🔄 Updating product order status:", { productId, orderId, status });
+
+    // Validate status
+    const validStatuses = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: "Invalid status" });
+    }
+
+    // Find the product
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    // 🟢 FIXED: Find order using subdocument _id
+    const order = product.orders.id(orderId);
+    if (!order) {
+      console.log("Available orders:", product.orders.map(o => ({
+        _id: o._id,
+        orderId: o.orderId,
+        status: o.status
+      })));
+      return res.status(404).json({ error: "Order not found in this product" });
+    }
+
+    // Update order status
+    order.status = status;
+    await product.save();
+
+    console.log("✅ Product order status updated successfully");
+
+    res.status(200).json({
+      message: "Order status updated successfully",
+      order: order,
+      product: {
+        _id: product._id,
+        title: product.title
+      }
+    });
+  } catch (err) {
+    console.error("❌ updateProductOrderStatus Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Add product order - FIXED VERSION
+export const addProductOrder = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const { 
+      orderId, 
+      quantity = 1, 
+      orderPrice, 
+      buyerName, 
+      buyerEmail, 
+      address, 
+      phone 
+    } = req.body;
+
+    console.log("📦 Adding product order:", {
+      productId,
+      orderId,
+      quantity,
+      orderPrice,
+      buyerName,
+      buyerEmail,
+      address
+    });
+
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    // 🟢 FIXED: Add order to product with all required fields
+    product.orders.push({
+      user: req.user._id,
+      quantity: quantity,
+      orderPrice: orderPrice,
+      orderId: orderId, // 🟢 This is the main Order _id
+      buyerName: buyerName,
+      buyerEmail: buyerEmail,
+      address: address,
+      phone: phone || "Not provided",
+      status: "pending",
+      orderDate: new Date()
+    });
+
+    await product.save();
+
+    res.status(200).json({
+      message: "Order added to product successfully",
+      product: product,
+    });
+  } catch (err) {
+    console.error("❌ addProductOrder Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Other product functions...
 export const getProducts = async (req, res) => {
   try {
     let query = Product.find().populate("category", "name");
@@ -17,7 +123,6 @@ export const getProducts = async (req, res) => {
   }
 };
 
-//  Get products by lifestyle
 export const getProductsByLifestyle = async (req, res) => {
   try {
     const { type } = req.params;
@@ -34,7 +139,6 @@ export const getProductsByLifestyle = async (req, res) => {
   }
 };
 
-//  Get product by ID (auto increment clicks)
 export const getProductById = async (req, res) => {
   try {
     const product = await Product.findByIdAndUpdate(
@@ -52,35 +156,22 @@ export const getProductById = async (req, res) => {
   }
 };
 
-//  Create new product
-
 export const createProduct = async (req, res) => {
   try {
-    console.log("🖼 File details full:", JSON.stringify(req.files, null, 2));
-
     console.log("CREATE PRODUCT API CALLED");
     console.log(" User:", req.user);
-    console.log(" Body:", req.body);
-    console.log(" Files:", req.files);
 
-    //  Authentication Check
     if (!req.user || !req.user._id) {
       return res.status(401).json({ error: "Unauthorized: user not found" });
     }
 
-    // 🖼 Handle Images (Cloudinary)
     let imageUrls = [];
     if (req.files && req.files.length > 0) {
       imageUrls = req.files.map((file) => {
-        console.log(" File details:", file);
-        //  Cloudinary always provides 'path' and 'secure_url'
         return file.path || file.secure_url || "";
       }).filter(url => url !== "");
-    } else {
-      console.log(" No images uploaded");
     }
 
-    //  Parse Lifestyle Array Safely
     let lifestyleArray = [];
     if (req.body.lifestyle) {
       try {
@@ -92,11 +183,10 @@ export const createProduct = async (req, res) => {
       }
     }
 
-    //  Product Data
     const productData = {
       title: req.body.title?.trim() || "Untitled Product",
-slug: req.body.slug?.trim() || 
-      (req.body.title ? req.body.title.trim().toLowerCase().replace(/\s+/g, "-") : ""),
+      slug: req.body.slug?.trim() || 
+        (req.body.title ? req.body.title.trim().toLowerCase().replace(/\s+/g, "-") : ""),
       brand: req.body.brand || "Unknown",
       description: req.body.description || "",
       price: Number(req.body.price) || 0,
@@ -112,14 +202,10 @@ slug: req.body.slug?.trim() ||
       tags: req.body.tags ? [req.body.tags] : [],
     };
 
-    console.log("✅ Final Product Data:", productData);
-
-    //  Validation
     if (!productData.category) {
       return res.status(400).json({ error: "Category is required" });
     }
 
-    // Save Product
     const newProduct = new Product(productData);
     const savedProduct = await newProduct.save();
 
@@ -144,66 +230,7 @@ slug: req.body.slug?.trim() ||
     });
   }
 };
-//  Update product order status
-export const updateProductOrderStatus = async (req, res) => {
-  try {
-    const { productId, orderId } = req.params;
-    const { status } = req.body;
 
-    console.log("🔄 Updating product order status:", { productId, orderId, status });
-
-    const validStatuses = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ error: "Invalid status" });
-    }
-
-    const product = await Product.findById(productId);
-    if (!product) return res.status(404).json({ error: "Product not found" });
-
-    const order = product.orders.find(
-      (o) => o.orderId?.toString() === orderId || o._id.toString() === orderId
-    );
-    if (!order) return res.status(404).json({ error: "Order not found in this product" });
-
-    order.status = status;
-    await product.save();
-
-    res.status(200).json({ message: "Order status updated successfully", order });
-  } catch (err) {
-    console.error("❌ updateProductOrderStatus Error:", err);
-    res.status(500).json({ error: err.message });
-  }
-};
-export const addProductOrder = async (req, res) => {
-  try {
-    const { productId } = req.params;
-    const { orderId, quantity = 1, buyerName, buyerEmail, address } = req.body;
-
-    const product = await Product.findById(productId);
-    if (!product) return res.status(404).json({ error: "Product not found" });
-
-    product.orders.push({
-      orderId,
-      user: req.user._id,
-      quantity,
-      orderDate: new Date(),
-      status: "pending",
-      orderPrice: product.price,
-      buyerName,
-      buyerEmail,
-      addressSnapshot: address
-    });
-
-    await product.save();
-    res.status(201).json({ message: "Order added to product", product });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-
-
-//  Get products uploaded by current user
 export const getMyProducts = async (req, res) => {
   try {
     if (!req.user || !req.user._id) {
@@ -218,9 +245,6 @@ export const getMyProducts = async (req, res) => {
   }
 };
 
-//  Add product order
-
-//  Update product
 export const updateProduct = async (req, res) => {
   try {
     const updatedProduct = await Product.findByIdAndUpdate(
@@ -236,7 +260,6 @@ export const updateProduct = async (req, res) => {
   }
 };
 
-//  Delete product
 export const deleteProduct = async (req, res) => {
   try {
     const deletedProduct = await Product.findByIdAndDelete(req.params.id);
@@ -248,7 +271,6 @@ export const deleteProduct = async (req, res) => {
   }
 };
 
-//  Get products by tag
 export const getProductsByTag = async (req, res) => {
   try {
     const { tag } = req.params;
@@ -265,7 +287,6 @@ export const getProductsByTag = async (req, res) => {
   }
 };
 
-//  Get popular products
 export const getPopularProducts = async (req, res) => {
   try {
     const products = await Product.find()
