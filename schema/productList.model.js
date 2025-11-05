@@ -169,30 +169,40 @@ uploadedBy: {
     },
 
     // 🟢 NEW FIELD — store orders for each product
-    orders: [
-      {
-        user: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
-        },
-        quantity: {
-          type: Number,
-          default: 1,
-        },
-        orderDate: {
-          type: Date,
-          default: Date.now,
-        },
-        status: {
-          type: String,
-          enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],
-          default: "pending",
-        },
-        orderPrice: {
-          type: Number,
-        },
-      },
-    ],
+  orders: [
+  {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    quantity: {
+      type: Number,
+      default: 1,
+    },
+    orderDate: {
+      type: Date,
+      default: Date.now,
+    },
+    status: {
+      type: String,
+      enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],
+      default: "pending",
+    },
+    orderPrice: {
+      type: Number,
+    },
+    orderId: {  // NEW: References the main Order _id for syncing
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Order",
+    },
+    address: {  // NEW: Store per-order address for seller visibility
+      type: String,
+    },
+    phone: {    // NEW: Optional, if you want to store buyer's phone (pull from User if available)
+      type: String,
+    },
+  },
+],
   },
   {
     timestamps: true,
