@@ -95,7 +95,8 @@ export const createProduct = async (req, res) => {
     //  Product Data
     const productData = {
       title: req.body.title?.trim() || "Untitled Product",
-      slug: req.body.slug?.trim() || req.body.title?.trim().toLowerCase().replace(/\s+/g, "-"),
+slug: req.body.slug?.trim() || 
+      (req.body.title ? req.body.title.trim().toLowerCase().replace(/\s+/g, "-") : ""),
       brand: req.body.brand || "Unknown",
       description: req.body.description || "",
       price: Number(req.body.price) || 0,
@@ -173,6 +174,34 @@ export const updateProductOrderStatus = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+export const addProductOrder = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const { orderId, quantity = 1, buyerName, buyerEmail, address } = req.body;
+
+    const product = await Product.findById(productId);
+    if (!product) return res.status(404).json({ error: "Product not found" });
+
+    product.orders.push({
+      orderId,
+      user: req.user._id,
+      quantity,
+      orderDate: new Date(),
+      status: "pending",
+      orderPrice: product.price,
+      buyerName,
+      buyerEmail,
+      addressSnapshot: address
+    });
+
+    await product.save();
+    res.status(201).json({ message: "Order added to product", product });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
 
 //  Get products uploaded by current user
 export const getMyProducts = async (req, res) => {
