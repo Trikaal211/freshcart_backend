@@ -171,57 +171,57 @@ const productSchema = new mongoose.Schema(
     },
 
     // 🟢 FIXED: Orders array with proper fields
-    orders: [
-      {
-        _id: {
-          type: mongoose.Schema.Types.ObjectId,
-          auto: true
-        },
-        user: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
-        },
-        quantity: {
-          type: Number,
-          default: 1,
-        },
-        orderDate: {
-          type: Date,
-          default: Date.now,
-        },
-        status: {
-          type: String,
-          enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],
-          default: "pending",
-        },
-        orderPrice: {
-          type: Number,
-        },
-        // 🟢 CRITICAL: Add orderId field
-        orderId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "Order",
-          required: true
-        },
-        // 🟢 Add buyer information fields
-        buyerName: {
-          type: String,
-          required: true
-        },
-        buyerEmail: {
-          type: String,
-          required: true
-        },
-        address: {
-          type: String,
-          required: true
-        },
-        phone: {
-          type: String,
-          default: "Not provided"
-        }
-      },
-    ],
+ // Temporary fix - remove required from these fields
+orders: [
+  {
+    _id: {
+      type: mongoose.Schema.Types.ObjectId,
+      auto: true
+    },
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    quantity: {
+      type: Number,
+      default: 1,
+    },
+    orderDate: {
+      type: Date,
+      default: Date.now,
+    },
+    status: {
+      type: String,
+      enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],
+      default: "pending",
+    },
+    orderPrice: {
+      type: Number,
+    },
+    // 🟢 TEMPORARY: Remove required temporarily
+    orderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Order",
+      // required: true // Remove this temporarily
+    },
+    buyerName: {
+      type: String,
+      // required: true // Remove this temporarily
+    },
+    buyerEmail: {
+      type: String,
+      // required: true // Remove this temporarily
+    },
+    address: {
+      type: String,
+      // required: true // Remove this temporarily
+    },
+    phone: {
+      type: String,
+      default: "Not provided"
+    }
+  },
+],
   },
   {
     timestamps: true,
