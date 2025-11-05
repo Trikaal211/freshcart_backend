@@ -130,29 +130,37 @@ export const getAllOrders = async (req, res) => {
 // Update order statu
 
 // Add this to your order.controller.js
+// controllers/order.controller.js
+
 export const updateOrderStatus = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params; // order ID
     const { status } = req.body;
 
-    // Validate status
     const validStatuses = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ error: "Invalid status" });
     }
 
+    // 1️⃣ Update in Order collection
     const updatedOrder = await Order.findByIdAndUpdate(
       id,
       { status },
       { new: true }
-    ).populate("user", "name email").populate("items.product", "title images");
+    ).populate("items.product", "title images uploadedBy");
 
-    if (!updatedOrder) {
-      return res.status(404).json({ error: "Order not found" });
+    if (!updatedOrder) return res.status(404).json({ error: "Order not found" });
+
+    // 2️⃣ Also update the product.orders array for each product in this order
+    for (const item of updatedOrder.items) {
+      await Product.updateMany(
+        { _id: item.product, "orders.orderId": id },
+        { $set: { "orders.$.status": status } }
+      );
     }
 
     res.status(200).json({
-      message: "Order status updated successfully",
+      message: "Order status updated successfully in both collections",
       order: updatedOrder,
     });
   } catch (err) {
@@ -160,4 +168,5 @@ export const updateOrderStatus = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
 
