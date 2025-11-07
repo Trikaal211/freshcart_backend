@@ -86,20 +86,19 @@ export const createOrder = async (req, res) => {
 };
 
 // Update order status - FIXED VERSION
-// Update order status - COMPLETE FIXED VERSION
 export const updateOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { status } = req.body;
 
-    console.log("🔄 Updating order status everywhere:", { orderId, status });
+    console.log("Updating order status:", { orderId, status });
 
     const validStatuses = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ error: "Invalid status" });
     }
 
-    // 1. Update in main Order collection
+    // Update in Order collection
     const updatedOrder = await Order.findByIdAndUpdate(
       orderId,
       { status },
@@ -110,11 +109,11 @@ export const updateOrderStatus = async (req, res) => {
       return res.status(404).json({ error: "Order not found" });
     }
 
-    // 2. Update in all products' orders arrays for this order
+    // Also update the product.orders array for each product in this order
     for (const item of updatedOrder.items) {
       await Product.updateOne(
         { 
-          _id: item.product._id, 
+          _id: item.product, 
           "orders.orderId": orderId 
         },
         { 
@@ -128,7 +127,7 @@ export const updateOrderStatus = async (req, res) => {
       order: updatedOrder,
     });
   } catch (err) {
-    console.error("❌ updateOrderStatus Error:", err);
+    console.error(" updateOrderStatus Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
