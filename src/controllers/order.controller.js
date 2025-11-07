@@ -4,7 +4,7 @@ import Product from "../../schema/productList.model.js";
 // CREATE ORDER - FIXED VERSION
 export const createOrder = async (req, res) => {
   try {
-    console.log("🟢 CREATE ORDER CALLED");
+    console.log(" CREATE ORDER CALLED");
     const userId = req.user._id;
     const { items, totalAmount, address, phone, deliveryTime, paymentMethod } = req.body;
 
@@ -62,7 +62,7 @@ export const createOrder = async (req, res) => {
           orderDate: new Date(),
           status: "pending",
           orderPrice: item.price,
-          orderId: savedOrder._id, // 🟢 Main order ID
+          orderId: savedOrder._id, //  Main order ID
           buyerName: `${userInfo.firstName} ${userInfo.lastName}`,
           buyerEmail: userInfo.email,
           address: address,
@@ -73,32 +73,33 @@ export const createOrder = async (req, res) => {
       }
     }
 
-    console.log("✅ Order created successfully:", savedOrder._id);
+    console.log(" Order created successfully:", savedOrder._id);
     res.status(201).json({
       message: "Order placed successfully",
       order: savedOrder,
     });
 
   } catch (error) {
-    console.error("❌ Error creating order:", error);
+    console.error(" Error creating order:", error);
     res.status(500).json({ error: "Something went wrong while creating order" });
   }
 };
 
 // Update order status - FIXED VERSION
+// Update order status - COMPLETE FIXED VERSION
 export const updateOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { status } = req.body;
 
-    console.log("🔄 Updating order status:", { orderId, status });
+    console.log("🔄 Updating order status everywhere:", { orderId, status });
 
     const validStatuses = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ error: "Invalid status" });
     }
 
-    // Update in Order collection
+    // 1. Update in main Order collection
     const updatedOrder = await Order.findByIdAndUpdate(
       orderId,
       { status },
@@ -109,11 +110,11 @@ export const updateOrderStatus = async (req, res) => {
       return res.status(404).json({ error: "Order not found" });
     }
 
-    // Also update the product.orders array for each product in this order
+    // 2. Update in all products' orders arrays for this order
     for (const item of updatedOrder.items) {
       await Product.updateOne(
         { 
-          _id: item.product, 
+          _id: item.product._id, 
           "orders.orderId": orderId 
         },
         { 
