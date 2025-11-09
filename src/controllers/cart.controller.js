@@ -1,13 +1,5 @@
 import Cart from "../../schema/shopping.model.js";
 import Product from "../../schema/productList.model.js";
-import { io } from "../server.js"; // Socket import
-
-// Helper function: emit cart update to user
-const emitCartUpdate = async (userId) => {
-  const updatedCart = await Cart.findOne({ userId })
-    .populate("products.productId", "title images price weight availability discountPrice");
-  io.to(userId.toString()).emit("cartUpdated", updatedCart || { products: [] });
-};
 
 // Add or update product in cart
 export const addToCart = async (req, res) => {
@@ -18,22 +10,45 @@ export const addToCart = async (req, res) => {
 
   try {
     let cart = await Cart.findOne({ userId });
-    if (!cart) cart = await Cart.create({ userId, products: [] });
+    let updatedQuantity;
+    let updatedPrice;
+
+    if (!cart) {
+      cart = await Cart.create({ userId, products: [] });
+    }
 
     const existing = cart.products.find(p => p.productId.toString() === productId);
+
+    // Get product details to get current price
     const product = await Product.findById(productId);
-    if (!product) return res.status(404).json({ error: "Product not found" });
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
+    }
 
     if (existing) {
-      existing.quantity += quantity;
+      existing.quantity += quantity; 
+      updatedQuantity = existing.quantity;
+      updatedPrice = product.price * existing.quantity;
     } else {
-      cart.products.push({ productId, quantity, price: product.price });
+      cart.products.push({ 
+        productId, 
+        quantity,
+        price: product.price // Store current product price
+      });
+      updatedQuantity = quantity;
+      updatedPrice = product.price * quantity;
     }
 
     await cart.save();
-    await emitCartUpdate(userId);
+    const populatedCart = await Cart.findOne({ userId })
+      .populate("products.productId", "title images price weight availability");
 
-    res.status(200).json(await Cart.findOne({ userId }).populate("products.productId", "title images price weight availability"));
+    res.status(200).json({
+      ...populatedCart.toObject(),
+      updatedQuantity,
+      updatedPrice,
+      message: existing ? "Cart item updated" : "Item added to cart"
+    });
   } catch (err) {
     console.error("ADD TO CART ERROR:", err);
     res.status(500).json({ error: "Server error", details: err.message });
@@ -47,7 +62,21 @@ export const getCart = async (req, res) => {
   try {
     const cart = await Cart.findOne({ userId })
       .populate("products.productId", "title images price weight availability discountPrice");
-    res.status(200).json(cart || { products: [] });
+
+    if (!cart) {
+      return res.status(200).json({ userId, products: [], message: "Cart is empty" });
+    }
+
+    // Calculate totals
+    const cartWithTotals = {
+      ...cart.toObject(),
+      subtotal: cart.products.reduce((total, item) => {
+        return total + (item.productId?.price || 0) * item.quantity;
+      }, 0),
+      totalItems: cart.products.reduce((total, item) => total + item.quantity, 0)
+    };
+
+    res.status(200).json(cartWithTotals);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
@@ -66,9 +95,8 @@ export const removeFromCart = async (req, res) => {
       { new: true }
     ).populate("products.productId", "title images price weight availability");
 
-    await emitCartUpdate(userId);
-
     if (!updatedCart) return res.status(404).json({ message: "Cart not found" });
+
     res.status(200).json(updatedCart);
   } catch (err) {
     res.status(500).json({ error: "Server error", details: err.message });
@@ -88,9 +116,8 @@ export const updateCartItem = async (req, res) => {
       { new: true }
     ).populate("products.productId", "title images price weight availability");
 
-    await emitCartUpdate(userId);
-
     if (!updatedCart) return res.status(404).json({ message: "Cart not found" });
+
     res.status(200).json(updatedCart);
   } catch (err) {
     res.status(500).json({ error: "Server error", details: err.message });
@@ -108,9 +135,8 @@ export const clearCart = async (req, res) => {
       { new: true }
     );
 
-    await emitCartUpdate(userId);
-
     if (!updatedCart) return res.status(404).json({ message: "Cart not found" });
+
     res.status(200).json({ message: "Cart cleared successfully", cart: updatedCart });
   } catch (err) {
     res.status(500).json({ error: "Server error", details: err.message });
@@ -123,12 +149,18 @@ export const getCartSummary = async (req, res) => {
 
   try {
     const cart = await Cart.findOne({ userId })
-      .populate("products.productId", "title price availability uploadedBy");
+      .populate("products.productId", "title price availability quantity uploadedBy");
 
     if (!cart || cart.products.length === 0) {
-      return res.status(200).json({ items: [], subtotal: 0, totalItems: 0, message: "Cart is empty" });
+      return res.status(200).json({ 
+        items: [], 
+        subtotal: 0, 
+        totalItems: 0, 
+        message: "Cart is empty" 
+      });
     }
 
+    // Check product availability and calculate totals
     let subtotal = 0;
     let totalItems = 0;
     const items = [];
@@ -146,7 +178,7 @@ export const getCartSummary = async (req, res) => {
           quantity: item.quantity,
           price: product.price,
           itemTotal: itemTotal,
-          uploadedBy: product.uploadedBy
+          uploadedBy: product.uploadedBy // For order tracking
         });
       }
     }
@@ -155,10 +187,11 @@ export const getCartSummary = async (req, res) => {
       items,
       subtotal,
       totalItems,
-      shipping: subtotal > 500 ? 0 : 40,
+      shipping: subtotal > 500 ? 0 : 40, // Free shipping above 500
       total: subtotal + (subtotal > 500 ? 0 : 40)
     });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Server error" });
   }
 };
