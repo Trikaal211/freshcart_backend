@@ -20,7 +20,7 @@ export const updateProductOrderStatus = async (req, res) => {
       return res.status(404).json({ error: "Product not found" });
     }
 
-    // 🟢 FIXED: Find order using subdocument _id
+    // FIXED: Find order using subdocument _id
     const order = product.orders.id(orderId);
     if (!order) {
       console.log("Available orders:", product.orders.map(o => ({
@@ -35,7 +35,7 @@ export const updateProductOrderStatus = async (req, res) => {
     order.status = status;
     await product.save();
 
-    console.log("✅ Product order status updated successfully");
+    console.log(" Product order status updated successfully");
 
     res.status(200).json({
       message: "Order status updated successfully",
@@ -46,7 +46,7 @@ export const updateProductOrderStatus = async (req, res) => {
       }
     });
   } catch (err) {
-    console.error("❌ updateProductOrderStatus Error:", err);
+    console.error(" updateProductOrderStatus Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -65,7 +65,7 @@ export const addProductOrder = async (req, res) => {
       phone 
     } = req.body;
 
-    console.log("📦 Adding product order:", {
+    console.log(" Adding product order:", {
       productId,
       orderId,
       quantity,
@@ -80,12 +80,12 @@ export const addProductOrder = async (req, res) => {
       return res.status(404).json({ error: "Product not found" });
     }
 
-    // 🟢 FIXED: Add order to product with all required fields
+    //  FIXED: Add order to product with all required fields
     product.orders.push({
       user: req.user._id,
       quantity: quantity,
       orderPrice: orderPrice,
-      orderId: orderId, // 🟢 This is the main Order _id
+      orderId: orderId, // This is the main Order _id
       buyerName: buyerName,
       buyerEmail: buyerEmail,
       address: address,
@@ -101,7 +101,7 @@ export const addProductOrder = async (req, res) => {
       product: product,
     });
   } catch (err) {
-    console.error("❌ addProductOrder Error:", err);
+    console.error(" addProductOrder Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -134,7 +134,7 @@ export const getProductsByLifestyle = async (req, res) => {
 
     res.status(200).json(products);
   } catch (err) {
-    console.error("❌ getProductsByLifestyle Error:", err);
+    console.error(" getProductsByLifestyle Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -255,7 +255,7 @@ export const updateProduct = async (req, res) => {
     if (!updatedProduct) return res.status(404).json({ error: "Product not found" });
     res.status(200).json(updatedProduct);
   } catch (err) {
-    console.error("❌ updateProduct Error:", err);
+    console.error("updateProduct Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -266,7 +266,7 @@ export const deleteProduct = async (req, res) => {
     if (!deletedProduct) return res.status(404).json({ error: "Product not found" });
     res.status(200).json({ message: "Product deleted successfully" });
   } catch (err) {
-    console.error("❌ deleteProduct Error:", err);
+    console.error(" deleteProduct Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -282,7 +282,7 @@ export const getProductsByTag = async (req, res) => {
 
     res.status(200).json(products);
   } catch (err) {
-    console.error("❌ getProductsByTag Error:", err);
+    console.error(" getProductsByTag Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -297,7 +297,7 @@ export const getPopularProducts = async (req, res) => {
 
     res.status(200).json(products);
   } catch (err) {
-    console.error("❌ getPopularProducts Error:", err);
+    console.error(" getPopularProducts Error:", err);
     res.status(500).json({ error: "Server failed. Check DB and category references." });
   }
 };
